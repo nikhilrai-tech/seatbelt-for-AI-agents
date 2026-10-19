@@ -160,7 +160,9 @@ def run(cwd: str, home: str, environ: Mapping[str, str], runner: Optional[Runner
     if pol.error:
         checks.append(Check(FAIL, "configuration", pol.error, "fix or remove the config file (while it is broken every command asks)"))
     else:
-        checks.append(Check(OK, "configuration", ", ".join(pol.sources) if pol.sources else "none (built-in rules only)"))
+        looked = policy_mod.user_config_path(home, environ)
+        checks.append(Check(OK, "configuration", ", ".join(pol.sources) if pol.sources else
+                            f"none (built-in rules only; the user config would be {looked})"))
     checks += [Check(WARN, "configuration", w) for w in pol.warnings]
 
     log = Path(os.environ.get("SEATBELT_AUDIT_LOG") or default_path())

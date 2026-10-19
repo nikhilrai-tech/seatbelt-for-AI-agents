@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -48,6 +49,38 @@ def _check_file(path: str, ctx: Context, color: bool) -> int:
     return 1 if bad else 0
 
 
+ZSH_HISTORY = re.compile(r"^: \d+:\d+;")
+
+
+def _check_stdin(ctx, color: bool, quiet: bool) -> int:
+    """Run every line of stdin through seatbelt and summarise. The quickest way to find false positives: point it at your
+    own shell history. Nothing is executed, previews are off (history paths are not on this disk), and the commands are
+    redacted before they are printed, so the output is safe to paste into an issue."""
+    from .audit import redact
+    from .engine import analyze
+
+    os.environ["SEATBELT_PREVIEW"] = "off"
+    counts = {Level.ALLOW: 0, Level.ASK: 0, Level.DENY: 0}
+    for raw in sys.stdin.read().splitlines():
+        line = ZSH_HISTORY.sub("", raw).strip()  # zsh extended history: ": 1700000000:0;command"
+        if not line or line.startswith("#"):
+            continue
+        v = analyze(line, ctx)
+        counts[v.level] += 1
+        if quiet and v.level == Level.ALLOW:
+            continue
+        print(_fmt(redact(line), v, color))
+    total = sum(counts.values())
+    if not total:
+        print("no commands on stdin", file=sys.stderr)
+        return 2
+    print(f"\n{total} commands: {counts[Level.ALLOW]} left alone, {counts[Level.ASK]} would ask first, "
+          f"{counts[Level.DENY]} would be denied.")
+    if counts[Level.ASK] + counts[Level.DENY]:
+        print("A harmless one in the list? Please open a 'false positive' issue with its `seatbelt check --json` output.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="seatbelt", description="A seatbelt for AI coding agents.")
     p.add_argument("--version", action="version", version=f"seatbelt {__version__}")
@@ -55,7 +88,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     c = sub.add_parser("check", help="explain what seatbelt would do with a command (nothing is executed)")
     c.add_argument("cmd", nargs=argparse.REMAINDER, help="the command line to check (quote it, or put options before it)")
-    c.add_argument("--file", help="check every line of a corpus file")
+    c.add_argument("--file", help="check every line of a file (plain commands, or EXPECTED<TAB>command for the regression corpus)")
+    c.add_argument("--stdin", action="store_true",
+                   help="check every command read from stdin, one per line (bash and zsh history files work); prints a summary")
+    c.add_argument("--quiet", action="store_true", help="with --stdin: hide the commands that would be left alone")
     c.add_argument("--cwd", help="pretend the command runs here (default: current directory)")
     c.add_argument("--home", help="pretend this is the home directory")
     c.add_argument("--headless", action="store_true", help="nobody can answer prompts: ASK becomes DENY")
@@ -218,6 +254,8 @@ def main(argv: list[str] | None = None) -> int:
             for w in ctx.policy.warnings:
                 print(f"note: {w}", file=sys.stderr)
         color = sys.stdout.isatty() and not args.no_color
+        if args.stdin:
+            return _check_stdin(ctx, color, args.quiet)
         if args.file:
             return _check_file(args.file, ctx, color)
         if not args.cmd:
