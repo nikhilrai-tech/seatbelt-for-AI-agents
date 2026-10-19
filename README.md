@@ -234,4 +234,5 @@ it catches the mistakes and the prompt-injected commands *before* they get that 
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+Apache-2.0, see [LICENSE](LICENSE). Commits made before this change were published under the MIT license; copies obtained
+under MIT may continue to be used under MIT.

@@ -8,8 +8,8 @@ version = "0.1.0"
 description = "A seatbelt for AI coding agents: understands the shell commands they run and blocks or asks before the dangerous ones."
 readme = "README.md"
 requires-python = ">=3.11"
-license = "MIT"
-license-files = ["LICENSE"]
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 authors = [{ name = "nikhilrai-tech" }]
 keywords = ["ai-agents", "security", "guardrails", "devops", "claude-code", "shell"]
 classifiers = [

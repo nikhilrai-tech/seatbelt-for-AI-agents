@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **License changed from MIT to Apache-2.0** (explicit patent grant, more comfortable for companies). Copies already obtained under MIT stay MIT.
+
 ## 0.1.0
 
 First release. Zero dependencies, Python 3.11+.
