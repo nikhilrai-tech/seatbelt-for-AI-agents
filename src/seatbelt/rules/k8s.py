@@ -49,7 +49,8 @@ def kubectl(cmd: Command, ctx: Context, res: Resolver) -> list[Finding]:
     kube_ctx = current_context(cmd, ctx, (o.values.get("--context") or [""])[0])
     ns = (o.values.get("-n") or o.values.get("--namespace") or [""])[0]
     prod = ctx.is_prod(kube_ctx, ns, " ".join(cmd.argv[1:]), *cmd.env.values())
-    where = f" on the PRODUCTION cluster ({kube_ctx or ns})" if prod else ""
+    named = kube_ctx or ns
+    where = f" on the PRODUCTION cluster{f' ({named})' if named else ''}" if prod else ""
     out: list[Finding] = []
 
     if verb == "delete":

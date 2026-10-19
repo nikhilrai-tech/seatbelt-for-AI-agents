@@ -64,7 +64,7 @@ def secret_kind(path: str, home: str, glob: bool = False) -> Optional[str]:
     if base.endswith(NOT_SECRET_SUFFIXES):
         return None
     if base == ".env" or (base.startswith(".env.") and not base.endswith(ENV_EXAMPLES)):
-        return "an environment file (.env)"
+        return "an environment file"
     if path.startswith(home + "/"):
         rel = path[len(home) + 1:]
         for pat, label in HOME_SECRET_GLOBS:

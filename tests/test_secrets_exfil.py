@@ -139,7 +139,7 @@ def test_file_tools_are_audited(tmp_path):
 
 @pytest.mark.parametrize("path,kind", [
     (f"{HOME}/.aws/credentials", "AWS credentials"), (f"{HOME}/.ssh/id_rsa", "an SSH private key"),
-    ("/work/project/.env", "an environment file (.env)"), ("/work/project/.env.production", "an environment file (.env)"),
+    ("/work/project/.env", "an environment file"), ("/work/project/.env.production", "an environment file"),
     ("/work/app/terraform.tfstate", "Terraform state (contains secrets)"), (f"{HOME}/.kube/config", "kubeconfig (cluster credentials)"),
     ("/etc/shadow", "the password hashes"), ("/work/key.pem", "a key/certificate file"),
 ])
