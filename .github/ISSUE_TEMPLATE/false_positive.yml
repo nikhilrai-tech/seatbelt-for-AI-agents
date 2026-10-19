@@ -1,0 +1,23 @@
+name: False positive (it asked or blocked something harmless)
+description: seatbelt interrupted a command that was fine
+labels: ["false positive"]
+body:
+  - type: markdown
+    attributes:
+      value: Interrupting everyday work is a bug here. Thank you for reporting it. **Remove anything private from the command first.**
+  - type: textarea
+    id: verdict
+    attributes:
+      label: Output of `seatbelt check --json '<command>'`
+      render: json
+    validations: {required: true}
+  - type: textarea
+    id: why
+    attributes:
+      label: Why is this command harmless in your workflow?
+    validations: {required: true}
+  - type: input
+    id: version
+    attributes:
+      label: seatbelt version (`seatbelt --version`)
+    validations: {required: true}

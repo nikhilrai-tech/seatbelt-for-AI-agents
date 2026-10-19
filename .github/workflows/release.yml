@@ -4,8 +4,10 @@ name: release
 on:
   release:
     types: [published]
+# Until the repository variable PUBLISH_TO_PYPI is set to "true", the job below is skipped (not failed).
 jobs:
   publish:
+    if: vars.PUBLISH_TO_PYPI == 'true'
     runs-on: ubuntu-latest
     environment: pypi
     permissions:

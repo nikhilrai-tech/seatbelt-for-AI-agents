@@ -1,0 +1,26 @@
+name: Bypass (a dangerous command was not caught)
+description: A command that should be ASK or DENY came back ALLOW
+labels: ["bypass"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If this could be used to harm someone beyond the documented limits (a fail-open, a project file granting itself permissions,
+        a secret leak), **report it privately** instead: Security tab -> Report a vulnerability.
+        **Remove anything private from the command first.**
+  - type: textarea
+    id: cmd
+    attributes:
+      label: The command and the output of `seatbelt check --json '<command>'`
+      render: shell
+    validations: {required: true}
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should happen, and which README claim does this contradict?
+    validations: {required: true}
+  - type: input
+    id: version
+    attributes:
+      label: seatbelt version
+    validations: {required: true}
