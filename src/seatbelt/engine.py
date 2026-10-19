@@ -7,6 +7,7 @@ from typing import Optional
 from .context import Context, Resolver
 from .model import Finding, Level, Verdict
 from .rules import rules_for
+from .rules.pipeline import analyze_pipelines
 from .rules.fs import DISK_DEVICE_PREFIXES, HARMLESS_DEVICES
 from .shell import Command, parse
 
@@ -62,7 +63,13 @@ def analyze(text: str, ctx: Optional[Context] = None) -> Verdict:
             findings += fn(cmd, ctx, res)
         findings += _redirects(cmd, res)
         cur = _track_cwd(cmd, cur, res)
+    findings += analyze_pipelines(parsed.commands, ctx, res)
 
+    return verdict_of(findings, ctx, parsed.commands)
+
+
+def verdict_of(findings: list[Finding], ctx: Context, commands: Optional[list[Command]] = None) -> Verdict:
+    """Deduplicate, take the strictest level, and apply headless mode."""
     unique: list[Finding] = []
     for f in findings:
         if (f.rule, f.message) not in {(u.rule, u.message) for u in unique}:
@@ -70,4 +77,4 @@ def analyze(text: str, ctx: Optional[Context] = None) -> Verdict:
     level = max((f.level for f in unique), default=Level.ALLOW)
     if ctx.headless and level == Level.ASK:
         level = Level.DENY
-    return Verdict(level, unique, parsed.commands)
+    return Verdict(level, unique, commands or [])

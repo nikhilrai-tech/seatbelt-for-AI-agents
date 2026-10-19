@@ -23,7 +23,8 @@ from typing import Optional
 
 from .audit import AuditLog
 from .context import Context
-from .engine import analyze
+from .engine import analyze, verdict_of
+from .rules.filetools import FILE_TOOLS, file_findings, target_path
 from .model import Finding, Level, Verdict
 
 SHELL_TOOLS = {"Bash", "PowerShell"}
@@ -72,13 +73,18 @@ def handle(payload: dict, headless: bool = False, audit: Optional[AuditLog] = No
         if payload.get("hook_event_name") not in (None, "PreToolUse"):
             return None
         tool = payload.get("tool_name")
-        if tool not in SHELL_TOOLS:
-            return None
-        command = (payload.get("tool_input") or {}).get("command")
-        if not isinstance(command, str):
-            return decision_output("ask", "seatbelt: this shell call has no readable command, so it cannot be checked.")
+        tool_input = payload.get("tool_input") or {}
         ctx = _context(payload, headless)
-        verdict = analyze_powershell(command, ctx) if tool == "PowerShell" else analyze(command, ctx)
+        if tool in FILE_TOOLS:
+            command = f"{tool} {target_path(tool_input)}".strip()
+            verdict = verdict_of(file_findings(tool, tool_input, ctx), ctx)
+        elif tool in SHELL_TOOLS:
+            command = tool_input.get("command")
+            if not isinstance(command, str):
+                return decision_output("ask", "seatbelt: this shell call has no readable command, so it cannot be checked.")
+            verdict = analyze_powershell(command, ctx) if tool == "PowerShell" else analyze(command, ctx)
+        else:
+            return None
         if audit is not None and AuditLog.enabled():
             audit.record({"session_id": payload.get("session_id"), "tool": tool, "cwd": ctx.cwd, "command": command,
                           "decision": verdict.level.name.lower(), "rules": [f.rule for f in verdict.findings],

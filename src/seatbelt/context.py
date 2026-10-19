@@ -31,6 +31,7 @@ class Context:
     home: str = field(default_factory=lambda: os.path.expanduser("~"))
     environ: Mapping[str, str] = field(default_factory=lambda: dict(os.environ))
     headless: bool = False  # nobody can answer a prompt, so every ASK becomes a DENY
+    depth: int = 0  # how many scripts deep we are (a script that runs a script that runs ...)
 
     def is_prod(self, *texts: str) -> bool:
         """True if the command or the environment it runs in looks like production."""

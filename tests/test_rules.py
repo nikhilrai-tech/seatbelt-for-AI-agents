@@ -63,7 +63,8 @@ def test_engine_never_raises_on_garbage():
     rng = random.Random(1234)
     alphabet = string.printable + "'\"`$(){}[]\\|&;<>*?~#!"
     pieces = ["rm", "-rf", "/", "$(", ")", "`", "'", '"', "bash -c", "sudo", "|", "&&", "<<EOF", "\n", "$'", "\\x", "{}", "xargs",
-              "find", "-exec", "ssh", "eval", "cd", "~", "$HOME", "${", "<(", "git push -f"]
+              "find", "-exec", "ssh", "eval", "cd", "~", "$HOME", "${", "<(", "git push -f", "curl", "|", "base64 -d", "python -c",
+              "~/.ssh/id_rsa", ".env", "<<EOF", "EOF", "nc", "echo", "> ~/.bashrc", "$(cat", "tee"]
     for _ in range(3000):
         n = rng.randint(1, 12)
         text = " ".join(rng.choice(pieces) if rng.random() < 0.6 else "".join(rng.choice(alphabet) for _ in range(rng.randint(1, 8)))

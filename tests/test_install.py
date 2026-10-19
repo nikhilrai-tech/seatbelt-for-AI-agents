@@ -11,7 +11,7 @@ def entry(block=False):
 def test_merge_into_empty_settings():
     s, changed = install.merge({}, entry())
     assert changed
-    assert s["hooks"]["PreToolUse"] == [{"matcher": "Bash|PowerShell", "hooks": [{"type": "command", "command": "/venv/bin/seatbelt hook"}]}]
+    assert s["hooks"]["PreToolUse"] == [{"matcher": install.MATCHER, "hooks": [{"type": "command", "command": "/venv/bin/seatbelt hook"}]}]
 
 
 def test_merge_keeps_everything_else_and_is_idempotent():

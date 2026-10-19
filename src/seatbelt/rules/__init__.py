@@ -22,9 +22,9 @@ def rule(*names: str):
 def rules_for(name: str) -> list[Rule]:
     if name.startswith("mkfs."):  # mkfs.ext4, mkfs.xfs ...
         name = "mkfs"
-    return REGISTRY.get(name, [])
+    return REGISTRY.get(name, []) + REGISTRY.get("*", [])  # "*" rules look at every command
 
 
-from . import fs, git, system  # noqa: E402
+from . import fs, git, interp, network, secrets, system, tamper  # noqa: E402
 
-RULE_MODULES = (fs, git, system)  # importing them registers their rules
+RULE_MODULES = (fs, git, system, secrets, network, interp, tamper)  # importing them registers their rules

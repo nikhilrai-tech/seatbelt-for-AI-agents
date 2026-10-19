@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Optional
 
 MARKER = "seatbelt hook"
-MATCHER = "Bash|PowerShell"
+MATCHER = "Bash|PowerShell|Read|Write|Edit|MultiEdit|NotebookEdit|Glob|Grep"
 ON_FAILURE_MIN = (2, 1, 295)  # `onFailure: "block"` needs Claude Code >= this
 
 
