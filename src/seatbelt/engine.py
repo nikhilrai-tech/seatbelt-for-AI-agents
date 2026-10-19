@@ -1,0 +1,73 @@
+"""Turn a command line into a Verdict: parse it, run every rule on every command found, take the strictest result."""
+from __future__ import annotations
+
+import re
+from typing import Optional
+
+from .context import Context, Resolver
+from .model import Finding, Level, Verdict
+from .rules import rules_for
+from .rules.fs import DISK_DEVICE_PREFIXES, HARMLESS_DEVICES
+from .shell import Command, parse
+
+FORK_BOMB = re.compile(r":\s*\(\s*\)\s*\{[^}]*:\s*\|\s*:[^}]*\}")
+WRITE_OPS = {">", ">>", ">|", "&>", "&>>", "<>"}
+PROBLEM_TEXT = {
+    "dynamic-command": "the program to run is computed at runtime, so it cannot be checked",
+    "eval": "an `eval` of a runtime string runs code that cannot be checked",
+    "unbalanced": "the command could not be parsed reliably",
+    "too-deep": "the command is nested too deeply to check",
+}
+
+
+def _track_cwd(cmd: Command, cur: Optional[str], res: Resolver) -> Optional[str]:
+    if cmd.name in ("cd", "pushd"):
+        args = [a for a in cmd.argv[1:] if not a.startswith("-") or a == "-"]
+        if not args:
+            return res.ctx.home
+        if cmd.words and cmd.dyn(cmd.argv.index(args[0])) or args[0] == "-":
+            return None
+        return res.resolve(args[0], cur).path
+    if cmd.name == "popd":
+        return None
+    return cur
+
+
+def _redirects(cmd: Command, res: Resolver) -> list[Finding]:
+    out = []
+    for r in cmd.redirects:
+        if r.op in WRITE_OPS and r.target and r.target not in HARMLESS_DEVICES:
+            path = res.resolve(r.target, cmd.cwd).path
+            if path and path.startswith(DISK_DEVICE_PREFIXES):
+                out.append(Finding("fs.redirect.device", Level.DENY, "irreversible",
+                                   f"redirecting output into the disk device {path} destroys its data", cmd.raw))
+    return out
+
+
+def analyze(text: str, ctx: Optional[Context] = None) -> Verdict:
+    ctx = ctx or Context()
+    res = Resolver(ctx)
+    parsed = parse(text)
+    findings: list[Finding] = []
+
+    if FORK_BOMB.search(text):
+        findings.append(Finding("system.fork-bomb", Level.DENY, "destructive", "this is a fork bomb", text[:80]))
+    for p in parsed.problems:
+        findings.append(Finding(f"parse.{p.kind}", Level.ASK, "dynamic", PROBLEM_TEXT.get(p.kind, p.message), p.raw))
+
+    cur: Optional[str] = ctx.cwd
+    for cmd in parsed.commands:
+        cmd.cwd = cur
+        for fn in rules_for(cmd.name):
+            findings += fn(cmd, ctx, res)
+        findings += _redirects(cmd, res)
+        cur = _track_cwd(cmd, cur, res)
+
+    unique: list[Finding] = []
+    for f in findings:
+        if (f.rule, f.message) not in {(u.rule, u.message) for u in unique}:
+            unique.append(f)
+    level = max((f.level for f in unique), default=Level.ALLOW)
+    if ctx.headless and level == Level.ASK:
+        level = Level.DENY
+    return Verdict(level, unique, parsed.commands)
