@@ -109,6 +109,10 @@ def check_settings_file(path: Path, scope: str, claude_ver: Optional[tuple[int, 
     out.append(Check(OK if exists else FAIL, f"{scope}: hook program exists", first if exists else
                      f"`{first}` cannot be found. Claude Code treats that as a non-blocking error: commands run unchecked",
                      "" if exists else "re-run `seatbelt install claude-code --write` from the environment where seatbelt is installed"))
+    if exists and install.is_fragile_python_env(first):
+        out.append(Check(WARN, f"{scope}: the hook lives in a virtual environment",
+                         f"{first}: if that environment is deleted or recreated the hook silently stops working",
+                         "install it as a tool (`pipx install seatbelt-guard`) and run `seatbelt install claude-code --write` again"))
     matcher = pre[0].get("matcher", "")
     missing = [t for t in install.MATCHER.split("|") if t not in matcher] if matcher not in ("", "*") else []
     if missing:

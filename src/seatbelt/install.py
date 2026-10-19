@@ -24,9 +24,25 @@ def settings_path(scope: str, cwd: Optional[str] = None) -> Path:
     return base / ("settings.local.json" if scope == "local" else "settings.json")
 
 
+STABLE_TOOL_ENVS = ("/pipx/venvs/", "/uv/tools/")  # tool installers recreate these in place and keep a stable launcher on PATH
+
+VENV_WARNING = ("seatbelt is running from a virtual environment ({where}) and the hook will point into it. If that environment is "
+                "deleted or recreated, the hook stops working silently and Claude Code runs commands unchecked. Install it as a tool "
+                "instead: `pipx install seatbelt-guard`, then run `seatbelt install claude-code --write` again.")
+
+
+def is_fragile_python_env(path: str) -> bool:
+    """True if `path` lives in an ordinary virtual environment (one a person may delete), not a tool installer's."""
+    p = str(Path(path).absolute())
+    if any(marker in p for marker in STABLE_TOOL_ENVS):
+        return False
+    return any((parent / "pyvenv.cfg").is_file() for parent in list(Path(p).parents)[:4])
+
+
 def hook_command(headless: bool = False) -> str:
     exe = shutil.which("seatbelt")
-    if exe and Path(exe).parent == Path(sys.executable).parent:
+    # with pipx the launcher on PATH is a symlink into the tool's venv: prefer it, it survives a reinstall
+    if exe and Path(exe).resolve().parent == Path(sys.executable).parent:
         base = shlex.quote(exe)
     else:
         base = f"{shlex.quote(sys.executable)} -m seatbelt"

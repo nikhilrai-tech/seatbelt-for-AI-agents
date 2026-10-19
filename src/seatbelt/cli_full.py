@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import re
+import shlex
 import sys
 from pathlib import Path
 
@@ -161,6 +162,9 @@ def _cmd_install(args) -> int:
     can_block = version is not None and version >= install.ON_FAILURE_MIN
     on_failure = can_block and not args.no_on_failure_block
     command = install.hook_command(args.headless)
+    where = shlex.split(command)[0]
+    if install.is_fragile_python_env(where):
+        print("WARNING: " + install.VENV_WARNING.format(where=where) + "\n", file=sys.stderr)
     settings, changed = install.merge_all(settings, command, on_failure)
     print(f"Settings file: {path}")
     print(f"Claude Code version: {'.'.join(map(str, version)) if version else 'not found'}")
