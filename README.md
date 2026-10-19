@@ -86,6 +86,29 @@ Covered so far: `rm`, `find -delete`, `dd`, `mkfs`/`fdisk` and friends, `chmod`/
 devices, fork bombs, `git` (force-push, `reset --hard`, `clean -f`, branch/stash/reflog destruction, history rewrites),
 `sudo`, `kill`, `systemctl`, `crontab -r`, firewalls, power commands.
 
+## It shows what a deletion would actually touch
+
+A prompt that says "recursive delete of src" doesn't help anyone decide. So before asking, seatbelt measures the target:
+
+```text
+ASK   rm -rf src
+        - recursive delete of /home/me/app/src  [fs.rm.recursive]
+        = impact: deletes 27 files in 2 folders (1.4 MB) under /home/me/app/src; 27 files changed in the last 24 hours,
+          so possibly uncommitted work; includes .env, local.sqlite, which are probably not in version control
+```
+
+File and folder counts, size, whether a `.git` directory is inside, how much changed in the last 24 hours (a stand-in for
+uncommitted work), and files that usually are *not* in version control (`.env`, keys, local databases, state files). In a
+real Claude Code session the agent read this and offered to back the folder up first.
+
+Design notes:
+
+- **seatbelt never runs `git`, `kubectl` or anything else to find out.** Running git inside a repository the agent just
+  cloned can execute code from that repository's own config (`core.fsmonitor`, hooks...); a guardrail must not be what
+  triggers it. Everything is read straight from the filesystem. The price: it cannot tell *tracked* from *untracked* files.
+- Only `ASK` verdicts are measured (a `DENY` is final). Symlinks are not followed, other filesystems are not crossed, and
+  the whole preview shares a 1.2 s budget, after which it says "at least". `SEATBELT_PREVIEW=off` turns it off.
+
 ## Production is detected, not assumed
 
 Deleting a dev namespace and deleting prod are different acts, so seatbelt works out *where* a command runs:
@@ -153,7 +176,7 @@ it catches the mistakes and the prompt-injected commands *before* they get that 
 - [x] Claude Code hook (`PreToolUse`), audit log and installer
 - [x] Secrets and exfiltration: credential files, `curl | sh`, `env | curl`, encoded payloads, inline interpreters, scripts the agent wrote
 - [x] Cloud and infra: `aws`, `gcloud`, `az`, `kubectl`, `helm`, `terraform`, SQL, `docker`, production detection, policy file
-- [ ] Blast-radius preview: "this deletes 14,203 files (3.2 GB), including `.git`"
+- [x] Blast-radius preview: "this deletes 14,203 files (3.2 GB), including `.git`"
 - [ ] Learn mode: turn what you approved into an allowlist
 
 ## License

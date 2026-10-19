@@ -58,8 +58,9 @@ def test_ordinary_commands_are_not_flagged(cmd):
     assert level(cmd) == Level.ALLOW, analyze(cmd, Context(**CTX)).reason
 
 
-def test_engine_never_raises_on_garbage():
+def test_engine_never_raises_on_garbage(monkeypatch):
     """A crash in a hook lets the command through, so the engine must survive anything."""
+    monkeypatch.setenv("SEATBELT_PREVIEW", "off")  # random `rm` targets would otherwise make this walk the disk
     rng = random.Random(1234)
     alphabet = string.printable + "'\"`$(){}[]\\|&;<>*?~#!"
     pieces = ["rm", "-rf", "/", "$(", ")", "`", "'", '"', "bash -c", "sudo", "|", "&&", "<<EOF", "\n", "$'", "\\x", "{}", "xargs",

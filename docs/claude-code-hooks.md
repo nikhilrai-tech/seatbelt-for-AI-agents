@@ -85,3 +85,11 @@ A project `seatbelt.toml` denied `npm run deploy*`. In a real session the agent 
 now also matched with the flags removed. `allow` rules stay literal on purpose: matching them loosely would let
 `git push -f origin feature/x` through an allow written for `git push origin feature/*`. A flag that takes a value leaves
 the value behind (`npm --prefix app run deploy`), so the README tells people to write `npm * run deploy*`.
+
+## The preview nearly made the guardrail slow
+
+The first version measured every ASK *and* DENY. The test suite went from 3 s to 56 s: `rm -rf /*` has dozens of glob
+matches, each measured with its own budget, and a fuzz test with random `rm` targets walked the disk thousands of times.
+In a hook that is not a test-speed problem, it is a user-facing delay on exactly the commands people are about to
+approve. The fixes: skip DENY (nothing left to decide), share one budget across all the paths of a command line, and say
+"not counted" when the budget runs out instead of showing nothing, which would read as "harmless".

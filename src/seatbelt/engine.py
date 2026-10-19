@@ -5,6 +5,7 @@ import re
 from typing import Optional
 
 from .context import Context, Resolver
+from . import preview
 from .model import Finding, Level, Verdict
 from .policy import Policy
 from .rules import rules_for
@@ -67,7 +68,13 @@ def analyze(text: str, ctx: Optional[Context] = None) -> Verdict:
     findings += analyze_pipelines(parsed.commands, ctx, res)
     findings = _apply_policy(findings, parsed.commands, ctx.policy)
 
-    return verdict_of(findings, ctx, parsed.commands)
+    verdict = verdict_of(findings, ctx, parsed.commands)
+    if verdict.level != Level.ALLOW:
+        try:
+            verdict.impact = preview.collect(parsed.commands, verdict.findings, ctx, res)
+        except Exception:  # a preview is a nicety: it must never change or break the decision
+            verdict.impact = []
+    return verdict
 
 
 def _apply_policy(findings: list[Finding], commands: list[Command], policy: Policy) -> list[Finding]:

@@ -21,6 +21,8 @@ def _fmt(command: str, v: Verdict, color: bool) -> str:
     lines = [f"{tag} {command}"]
     for f in sorted(v.findings, key=lambda f: -int(f.level)):
         lines.append(f"        - {f.message}  [{f.rule}]")
+    for line in v.impact:
+        lines.append(f"        = impact: {line}")
     return "\n".join(lines)
 
 
