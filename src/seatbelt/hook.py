@@ -8,6 +8,10 @@ Contract (from the Claude Code hooks reference, checked while building this):
   * Printing nothing and exiting 0 leaves the normal permission flow untouched.
   * Exit 2 blocks (stderr is the reason). Any OTHER non-zero exit is a non-blocking error: **the tool call still runs**.
 
+Verified on Claude Code 2.1.302 (by logging every event): `tool_use_id` is the same in PreToolUse and in the Post event of
+the same call; a command that ran fires PostToolUse, one that exited non-zero fires PostToolUseFailure, and a call that a
+hook denied fires neither. So "an Post event followed an ASK" means the human approved it, which is what learn mode counts.
+
 Consequences for this module:
   * It must never crash or exit non-zero, so every failure path answers `ask`, never silence.
   * It never answers `allow`: `allow` skips the user's permission prompt, and a guardrail has no business doing that.
@@ -73,7 +77,13 @@ def _context(payload: dict, headless: bool) -> Context:
 def handle(payload: dict, headless: bool = False, audit: Optional[AuditLog] = None) -> Optional[dict]:
     """Return the hook's JSON answer, or None to stay silent. Never raises."""
     try:
-        if payload.get("hook_event_name") not in (None, "PreToolUse"):
+        event = payload.get("hook_event_name")
+        if event in ("PostToolUse", "PostToolUseFailure"):
+            if audit is not None and AuditLog.enabled() and payload.get("tool_name") in SHELL_TOOLS | FILE_TOOLS:
+                audit.record({"event": "executed", "session_id": payload.get("session_id"), "tool": payload.get("tool_name"),
+                              "tool_use_id": payload.get("tool_use_id"), "ok": event == "PostToolUse"})
+            return None
+        if event not in (None, "PreToolUse"):
             return None
         tool = payload.get("tool_name")
         tool_input = payload.get("tool_input") or {}
@@ -89,7 +99,8 @@ def handle(payload: dict, headless: bool = False, audit: Optional[AuditLog] = No
         else:
             return None
         if audit is not None and AuditLog.enabled():
-            audit.record({"session_id": payload.get("session_id"), "tool": tool, "cwd": ctx.cwd, "command": command,
+            audit.record({"event": "decision", "session_id": payload.get("session_id"), "tool_use_id": payload.get("tool_use_id"),
+                          "tool": tool, "cwd": ctx.cwd, "command": command,
                           "decision": verdict.level.name.lower(), "rules": [f.rule for f in verdict.findings],
                           "categories": sorted({f.category for f in verdict.findings}), "reason": verdict.reason})
         if verdict.level == Level.ALLOW:

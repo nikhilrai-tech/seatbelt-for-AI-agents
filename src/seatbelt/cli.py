@@ -5,7 +5,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import __version__, hook, install
+from . import __version__, hook, install, learn
 from .audit import AuditLog
 from . import policy as policy_mod
 from .context import Context
@@ -78,6 +78,11 @@ def build_parser() -> argparse.ArgumentParser:
             i.add_argument("--headless", action="store_true", help="install with --headless (ASK becomes DENY)")
             i.add_argument("--no-on-failure-block", action="store_true", help="don't add onFailure=block")
 
+    ln = sub.add_parser("learn", help="suggest allow rules from the prompts you approved (suggestions only, nothing is applied)")
+    ln.add_argument("--min", type=int, default=3, help="approvals needed before a pattern is suggested (default 3)")
+    ln.add_argument("--audit-log")
+    ln.add_argument("--json", action="store_true")
+
     g = sub.add_parser("log", help="show what the agent ran")
     g.add_argument("--tail", type=int, default=20)
     g.add_argument("--decision", choices=["allow", "ask", "deny"])
@@ -116,19 +121,35 @@ def _cmd_install(args) -> int:
     version = install.claude_version()
     can_block = version is not None and version >= install.ON_FAILURE_MIN
     on_failure = can_block and not args.no_on_failure_block
-    entry = install.build_entry(install.hook_command(args.headless), on_failure)
-    settings, changed = install.merge(settings, entry)
+    command = install.hook_command(args.headless)
+    settings, changed = install.merge_all(settings, command, on_failure)
     print(f"Settings file: {path}")
     print(f"Claude Code version: {'.'.join(map(str, version)) if version else 'not found'}")
     if not on_failure:
         print("NOTE: onFailure=block is NOT set. If this hook ever fails to run (seatbelt uninstalled, broken venv),\n"
               "      Claude Code lets the command through. Add \"onFailure\": \"block\" yourself on Claude Code >= 2.1.295.")
-    print("Hook entry:\n" + json.dumps({"hooks": {"PreToolUse": [entry]}}, indent=2))
+    print("Hook entries:\n" + json.dumps({"hooks": {e: [x] for e, x in install.entries_for(command, on_failure).items()}}, indent=2))
     if args.write:
         backup = install.save(path, settings)
         print(f"\nWritten.{f' Previous file saved as {backup}.' if backup else ''} Restart Claude Code to load it.")
     else:
         print("\n(dry run: add --write to apply)")
+    return 0
+
+
+def _cmd_learn(args) -> int:
+    log = AuditLog(args.audit_log) if args.audit_log else AuditLog()
+    rows = list(log.read())
+    if not rows:
+        print(f"no entries in {log.path}; install the hook and use your agent for a while first", file=sys.stderr)
+        return 1
+    rep = learn.learn(rows, args.min)
+    if args.json:
+        print(json.dumps({"suggested": [vars(c) | {"categories": sorted(c.categories)} for c in rep.suggested],
+                          "skipped": [vars(c) | {"categories": sorted(c.categories)} for c in rep.skipped],
+                          "asks": rep.asks_seen, "approved": rep.approved, "declined": rep.declined}, indent=2))
+    else:
+        print(learn.format_report(rep, args.min))
     return 0
 
 
@@ -155,6 +176,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_install(args)
     if args.command == "log":
         return _cmd_log(args)
+    if args.command == "learn":
+        return _cmd_learn(args)
     if args.command == "check":
         kw = {}
         if args.cwd:

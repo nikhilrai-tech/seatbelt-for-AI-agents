@@ -93,3 +93,23 @@ matches, each measured with its own budget, and a fuzz test with random `rm` tar
 In a hook that is not a test-speed problem, it is a user-facing delay on exactly the commands people are about to
 approve. The fixes: skip DENY (nothing left to decide), share one budget across all the paths of a command line, and say
 "not counted" when the budget runs out instead of showing nothing, which would read as "harmless".
+
+## Which events fire when (measured, Claude Code 2.1.302)
+
+To let learn mode know what a human approved, I logged every hook event for three tool calls in a scratch project:
+
+| Call | Events, in order |
+|---|---|
+| `echo ok-one` (ran fine) | `PreToolUse` -> `PostToolUse` (`tool_response` has `stdout`, `stderr`, `interrupted`, ...) |
+| `ls /no-such-dir` (exit 2) | `PreToolUse` -> `PostToolUseFailure` (not `PostToolUse`) |
+| a command a hook denied | `PreToolUse` only. No Post event, and no `PermissionDenied` event either |
+
+The `tool_use_id` is identical in the Pre and Post event of one call, so it is the join key. "A Post event of either kind
+followed an ASK" is the only reliable signal that the human said yes; the absence of one means declined, failed to start,
+or not answered yet (so recent unanswered asks are treated as pending, not declined).
+
+## A glob that is wider than it looks
+
+Learn mode suggests patterns like `rm -rf build/*`. In `fnmatch`, `*` also matches `..` and `$TARGET`, so that rule would
+have waved through `rm -rf build/../../data`. `allow` rules now never apply to a command containing a `..` path
+component or a `$VAR`/`$(...)`, with a regression test.

@@ -3,7 +3,8 @@
 **A seatbelt for AI coding agents.** It reads the shell commands an agent is about to run, works out what they would
 really do, and blocks or asks before the dangerous ones. Zero dependencies.
 
-> **Status: early (v0.1 in progress).** Built one reviewed pull request at a time, see the roadmap below.
+> **Status: v0.1, built one reviewed pull request at a time** (see the roadmap at the bottom). Tested with unit tests, a
+> ~270-command corpus and real Claude Code sessions; Claude Code on Linux is the only agent/OS combination exercised so far.
 
 ## The problem
 
@@ -154,6 +155,43 @@ reason = "no agent touches the prod cluster"
   its `allow` and `trusted_hosts` are ignored (and reported). Otherwise a cloned repo could grant its own agent permissions.
 - A broken config file is an `ASK`, never silently ignored. `seatbelt check --config FILE` tries a config; `--no-config` ignores all.
 
+## Learn mode: fewer prompts without loosening anything blindly
+
+Prompts you always approve are noise, and noise trains people to click through. The hook logs each decision and, when
+Claude Code reports that the call ran, a second row with the same `tool_use_id` (verified on 2.1.302: a command that ran
+fires `PostToolUse`, one that exited non-zero fires `PostToolUseFailure`, one a hook denied fires neither). An ASK followed
+by that row was approved by you.
+
+```bash
+seatbelt learn            # reads the audit log, prints suggestions, changes nothing
+```
+
+```text
+Looked at 41 prompts: 33 approved, 5 declined or never ran, 3 still pending.
+
+Approved at least 3 times, safe to suggest:
+  1. git push --force origin feature/*
+       approved 6x, e.g. `git push --force origin feature/login`
+
+[[allow]]
+command = "git push --force origin feature/*"
+reason = "approved 6 times"
+
+Not suggested:
+  - kubectl delete pod web-1  (approved 4x, but it was also declined or never ran 1 time(s))
+  - cat ~/.aws/credentials  (never suggested for secret)
+```
+
+You paste what you agree with into your user config. Rules of the road:
+
+- Only ASKs are learned, never DENYs, and never anything involving secrets, exfiltration, tampering, remote code,
+  privilege, exposure, production or commands it cannot verify. Those keep asking however often you approve them.
+- Patterns are narrow: flags are kept literally and only the last path component is wildcarded
+  (`rm -rf build/old` -> `rm -rf build/*`, `kubectl delete pod web-1` stays exact).
+- A pattern needs N approvals (`--min`, default 3), is dropped if it was ever declined, and is kept only if re-running the
+  examples through the real engine with the rule applied really gives ALLOW.
+- An `allow` never applies to a command containing `..` or a `$VAR`: `rm -rf build/*` must not wave through `rm -rf build/../..`.
+
 ## What it cannot do (read this)
 
 seatbelt is a **guardrail, not a sandbox**. It reads commands and scripts before they run and refuses the ones it
@@ -177,7 +215,7 @@ it catches the mistakes and the prompt-injected commands *before* they get that 
 - [x] Secrets and exfiltration: credential files, `curl | sh`, `env | curl`, encoded payloads, inline interpreters, scripts the agent wrote
 - [x] Cloud and infra: `aws`, `gcloud`, `az`, `kubectl`, `helm`, `terraform`, SQL, `docker`, production detection, policy file
 - [x] Blast-radius preview: "this deletes 14,203 files (3.2 GB), including `.git`"
-- [ ] Learn mode: turn what you approved into an allowlist
+- [x] Learn mode: turn what you approved into an allowlist
 
 ## License
 

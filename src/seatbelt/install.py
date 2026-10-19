@@ -14,6 +14,7 @@ from typing import Optional
 MARKER = "seatbelt hook"
 MATCHER = "Bash|PowerShell|Read|Write|Edit|MultiEdit|NotebookEdit|Glob|Grep"
 ON_FAILURE_MIN = (2, 1, 295)  # `onFailure: "block"` needs Claude Code >= this
+EVENTS = ("PreToolUse", "PostToolUse", "PostToolUseFailure")  # Pre decides; the Post events only record that a call ran
 
 
 def settings_path(scope: str, cwd: Optional[str] = None) -> Path:
@@ -52,28 +53,44 @@ def _is_ours(entry: dict) -> bool:
     return any(MARKER in str(h.get("command", "")) for h in entry.get("hooks", []))
 
 
-def merge(settings: dict, entry: dict) -> tuple[dict, bool]:
-    """Add our entry to settings['hooks']['PreToolUse']. Returns (settings, changed). Idempotent: ours is replaced."""
+def merge(settings: dict, entry: dict, event: str = "PreToolUse") -> tuple[dict, bool]:
+    """Add our entry under settings['hooks'][event]. Returns (settings, changed). Idempotent: ours is replaced."""
     hooks = settings.setdefault("hooks", {})
-    pre = hooks.setdefault("PreToolUse", [])
-    kept = [e for e in pre if not _is_ours(e)]
-    changed = kept + [entry] != pre
-    hooks["PreToolUse"] = kept + [entry]
+    current = hooks.setdefault(event, [])
+    kept = [e for e in current if not _is_ours(e)]
+    changed = kept + [entry] != current
+    hooks[event] = kept + [entry]
+    return settings, changed
+
+
+def entries_for(command: str, on_failure_block: bool) -> dict[str, dict]:
+    """Pre decides (and may fail closed); the Post events only log, so a failure there is harmless."""
+    return {event: build_entry(command, on_failure_block and event == "PreToolUse") for event in EVENTS}
+
+
+def merge_all(settings: dict, command: str, on_failure_block: bool) -> tuple[dict, bool]:
+    changed = False
+    for event, entry in entries_for(command, on_failure_block).items():
+        settings, c = merge(settings, entry, event)
+        changed = changed or c
     return settings, changed
 
 
 def remove(settings: dict) -> tuple[dict, bool]:
-    pre = settings.get("hooks", {}).get("PreToolUse", [])
-    kept = [e for e in pre if not _is_ours(e)]
-    if len(kept) == len(pre):
-        return settings, False
-    if kept:
-        settings["hooks"]["PreToolUse"] = kept
-    else:
-        del settings["hooks"]["PreToolUse"]
-        if not settings["hooks"]:
-            del settings["hooks"]
-    return settings, True
+    removed = False
+    for event in EVENTS:
+        current = settings.get("hooks", {}).get(event, [])
+        kept = [e for e in current if not _is_ours(e)]
+        if len(kept) == len(current):
+            continue
+        removed = True
+        if kept:
+            settings["hooks"][event] = kept
+        else:
+            del settings["hooks"][event]
+    if removed and not settings.get("hooks"):
+        settings.pop("hooks", None)
+    return settings, removed
 
 
 def load(path: Path) -> dict:

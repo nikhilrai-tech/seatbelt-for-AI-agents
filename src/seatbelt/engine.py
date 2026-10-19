@@ -15,6 +15,7 @@ from .shell import Command, parse
 
 FORK_BOMB = re.compile(r":\s*\(\s*\)\s*\{[^}]*:\s*\|\s*:[^}]*\}")
 WRITE_OPS = {">", ">>", ">|", "&>", "&>>", "<>"}
+_TRAVERSAL = re.compile(r"(?:^|[\s/=:])\.\.(?:$|[\s/])")
 PROBLEM_TEXT = {
     "dynamic-command": "the program to run is computed at runtime, so it cannot be checked",
     "eval": "an `eval` of a runtime string runs code that cannot be checked",
@@ -91,7 +92,8 @@ def _apply_policy(findings: list[Finding], commands: list[Command], policy: Poli
             if r:
                 findings = findings + [Finding(f"policy.{word}", level, "policy",
                                                r.reason or f"{word} by your seatbelt policy ({r.pattern})", cmd.raw)]
-        if Policy.match(policy.allow, text):
+        # a glob `*` also matches `..` and `$VAR`, so `rm -rf build/*` must not wave through `rm -rf build/../..`
+        if Policy.match(policy.allow, text) and not _TRAVERSAL.search(text) and not any(w.dyn for w in cmd.words):
             allowed.add(cmd.raw)
     if allowed:
         findings = [f for f in findings if not (f.level == Level.ASK and f.command in allowed and f.category not in ("tamper", "policy"))]
