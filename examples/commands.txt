@@ -1,0 +1,94 @@
+# EXPECTED<TAB>command. Run with: seatbelt check --file examples/commands.txt --cwd /work/project --home /home/dev
+# This file is also the regression suite (tests/test_corpus.py), so every line is a promise.
+
+# --- everyday work: stays out of the way -------------------------------------------------
+ALLOW	ls -la
+ALLOW	git status
+ALLOW	git commit -m "fix: handle empty input"
+ALLOW	git push origin feature/login
+ALLOW	rm -rf node_modules
+ALLOW	rm -rf build dist .pytest_cache
+ALLOW	rm -rf /tmp/scratch-123
+ALLOW	rm notes.txt
+ALLOW	find . -name "*.pyc" -delete
+ALLOW	git clean -n -d
+ALLOW	chmod +x scripts/run.sh
+ALLOW	cat README.md | grep -i install | wc -l
+ALLOW	dd if=/dev/zero of=/dev/null bs=1M count=1
+ALLOW	cd /work/project && python -m pytest -q
+
+# --- destroys files ----------------------------------------------------------------------
+DENY	rm -rf /
+DENY	rm -rf ~
+DENY	rm -rf $HOME
+DENY	rm -rf "$HOME/"
+DENY	rm -rf /*
+DENY	rm -rf ~/*
+DENY	rm -rf /etc
+DENY	rm -rf --no-preserve-root /
+DENY	rm -rf ~/.ssh
+DENY	cd ~ && rm -rf *
+ASK	rm -rf src
+ASK	rm -rf .
+ASK	rm -rf ..
+ASK	rm -rf .git
+ASK	rm -rf "$BUILD_DIR/"
+ASK	rm -rf $(cat dirs.txt)
+ASK	find . -delete
+ASK	find / -name "*.log" -delete
+ASK	xargs rm -rf
+ASK	rm /etc/hosts
+ASK	rm ~/notes.txt
+DENY	find ~ -delete
+DENY	dd if=image.iso of=/dev/sda
+DENY	mkfs.ext4 /dev/sdb1
+DENY	echo x > /dev/sda
+DENY	chmod -R 777 /
+DENY	chown -R nobody /usr
+ASK	chmod -R 777 ./public
+ASK	chmod 4755 ./helper
+ASK	shred -u secrets.txt
+DENY	:(){ :|:& };:
+DENY	kill -9 -1
+ASK	pkill -9 -f .
+
+# --- git: can't be undone ----------------------------------------------------------------
+ASK	git push --force origin feature/x
+ASK	git push -f
+ASK	git push origin +feature/x
+ASK	git push --force-with-lease origin feature/x
+DENY	git push --force origin main
+DENY	git push -f origin master
+DENY	git push origin +main
+DENY	git push --mirror
+DENY	git push origin :main
+ASK	git push origin --delete old-branch
+ASK	git reset --hard HEAD~3
+ASK	git clean -fdx
+ASK	git checkout .
+ASK	git restore .
+ASK	git branch -D wip
+ASK	git stash clear
+ASK	git filter-branch --tree-filter 'rm -f secrets' HEAD
+ASK	git -C ../other reset --hard
+
+# --- it hides what it runs ---------------------------------------------------------------
+DENY	r""m -rf /
+DENY	\rm -rf ~
+DENY	$'\x72\x6d' -rf /
+DENY	/bin/rm -rf /
+DENY	command rm -rf /
+DENY	env FOO=1 rm -rf /
+DENY	bash -c "rm -rf /"
+DENY	sh -c 'cd / && rm -rf *'
+DENY	echo "rm -rf /" | bash
+DENY	sudo -u root rm -rf /etc
+DENY	ssh prod-host "rm -rf /var/lib"
+DENY	echo $(rm -rf ~)
+DENY	kubectl exec web-1 -- rm -rf /
+ASK	$CMD -rf /
+ASK	eval "$X"
+ASK	echo 'unterminated
+ASK	sudo apt-get update
+ASK	reboot
+ASK	crontab -r

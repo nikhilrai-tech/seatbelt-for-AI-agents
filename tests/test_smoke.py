@@ -1,7 +1,5 @@
 import seatbelt
-from seatbelt.cli import main
 
 
-def test_package_imports_and_cli_runs():
+def test_package_imports():
     assert seatbelt.__version__
-    assert main([]) == 0

@@ -1,12 +1,83 @@
 from __future__ import annotations
 
+import argparse
+import json
 import sys
+from pathlib import Path
 
 from . import __version__
+from .context import Context
+from .engine import analyze
+from .model import Level, Verdict
+
+COLORS = {Level.ALLOW: "\033[32m", Level.ASK: "\033[33m", Level.DENY: "\033[31m"}
+
+
+def _fmt(command: str, v: Verdict, color: bool) -> str:
+    label = v.level.name
+    tag = f"{COLORS[v.level]}{label:<5}\033[0m" if color else f"{label:<5}"
+    lines = [f"{tag} {command}"]
+    for f in sorted(v.findings, key=lambda f: -int(f.level)):
+        lines.append(f"        - {f.message}  [{f.rule}]")
+    return "\n".join(lines)
+
+
+def _check_file(path: str, ctx: Context, color: bool) -> int:
+    """Corpus lines: `EXPECTED<TAB>command` (EXPECTED is ALLOW, ASK or DENY) or just a command. Exit 1 on any mismatch."""
+    bad = 0
+    for raw in Path(path).read_text().splitlines():
+        line = raw.rstrip()
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        expected = None
+        head, sep, rest = line.partition("\t")
+        if sep and head in Level.__members__:
+            expected, line = Level[head], rest
+        v = analyze(line, ctx)
+        print(_fmt(line, v, color))
+        if expected is not None and v.level != expected:
+            bad += 1
+            print(f"        !! expected {expected.name}")
+    if bad:
+        print(f"\n{bad} line(s) did not match their expected verdict", file=sys.stderr)
+    return 1 if bad else 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(prog="seatbelt", description="A seatbelt for AI coding agents.")
+    p.add_argument("--version", action="version", version=f"seatbelt {__version__}")
+    sub = p.add_subparsers(dest="command", required=True)
+
+    c = sub.add_parser("check", help="explain what seatbelt would do with a command (nothing is executed)")
+    c.add_argument("cmd", nargs=argparse.REMAINDER, help="the command line to check (quote it, or put options before it)")
+    c.add_argument("--file", help="check every line of a corpus file")
+    c.add_argument("--cwd", help="pretend the command runs here (default: current directory)")
+    c.add_argument("--home", help="pretend this is the home directory")
+    c.add_argument("--headless", action="store_true", help="nobody can answer prompts: ASK becomes DENY")
+    c.add_argument("--json", action="store_true")
+    c.add_argument("--no-color", action="store_true")
+    return p
 
 
 def main(argv: list[str] | None = None) -> int:
-    print(f"seatbelt {__version__}: nothing to do yet, see the README for the roadmap.", file=sys.stderr)
+    args = build_parser().parse_args(argv)
+    if args.command == "check":
+        kw = {}
+        if args.cwd:
+            kw["cwd"] = args.cwd
+        if args.home:
+            kw["home"] = args.home
+        ctx = Context(headless=args.headless, **kw)
+        color = sys.stdout.isatty() and not args.no_color
+        if args.file:
+            return _check_file(args.file, ctx, color)
+        if not args.cmd:
+            print("give a command to check, or --file", file=sys.stderr)
+            return 2
+        text = " ".join(args.cmd)
+        v = analyze(text, ctx)
+        print(json.dumps(v.to_dict(), indent=2) if args.json else _fmt(text, v, color))
+        return int(v.level)  # 0 allow, 1 ask, 2 deny
     return 0
 
 
