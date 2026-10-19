@@ -1,12 +1,9 @@
 # Changelog
 
-## Unreleased
-
-- **License changed from MIT to Apache-2.0** (explicit patent grant, more comfortable for companies). Copies already obtained under MIT stay MIT.
-
 ## 0.1.0
 
-First release. Zero dependencies, Python 3.11+.
+First release. Zero dependencies, Python 3.11+. Licensed under **Apache-2.0** (the first commits of the repository were MIT; copies
+obtained under MIT stay MIT).
 
 - **Command analysis**: parses pipes, subshells, `sudo`/`env`/`xargs`, `bash -c`, `eval`, `ssh`, `kubectl exec`, here-docs, quoting and
   ANSI-C tricks; rules for the filesystem, `git` and the system; anything it cannot verify is an ASK.
@@ -21,3 +18,4 @@ First release. Zero dependencies, Python 3.11+.
 - **Blast-radius preview** for deletions, measured in-process (seatbelt never runs `git` or other tools to find out).
 - **Learn mode**: suggests narrow `allow` rules from the prompts you approved. Suggestions only.
 - **`seatbelt doctor`**: checks the install and runs the installed hook as a live test; **`seatbelt demo`**: a guided tour.
+- A fast path for `seatbelt hook` (about 60 ms per command), a security policy, issue templates and a contributing guide.
