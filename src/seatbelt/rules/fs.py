@@ -58,12 +58,13 @@ def _delete_target(cmd: Command, ctx: Context, res: Resolver, word, recursive: b
             return [F(f"{rule_id}.cwd", ASK, "destructive", f"{what} the directory you are working in, or one of its parents ({path})", cmd)]
         if posixpath.basename(path) == ".git":
             return [F(f"{rule_id}.git-dir", ASK, "irreversible", f"{what} the git history ({path})", cmd)]
-        if res.in_temp(path):
+        # scratch space is fine, unless the project itself lives there (then it is the user's work)
+        if res.in_temp(path) and not (cmd.cwd and res.in_temp(cmd.cwd)):
             return []
         if posixpath.basename(path) in SAFE_BUILD_DIRS and cmd.cwd and res.within(path, cmd.cwd):
             return []
         return [F(f"{rule_id}.recursive", ASK, "destructive", f"recursive delete of {path}", cmd)]
-    if not (res.in_temp(path) or (cmd.cwd and res.within(path, cmd.cwd))):
+    if not ((res.in_temp(path) and not (cmd.cwd and res.in_temp(cmd.cwd))) or (cmd.cwd and res.within(path, cmd.cwd))):
         return [F(f"{rule_id}.outside-project", ASK, "destructive", f"{what} a file outside the project ({path})", cmd)]
     return []
 

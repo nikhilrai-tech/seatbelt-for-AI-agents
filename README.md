@@ -36,6 +36,26 @@ DENY  cd /tmp && bash -c "git push --force origin main"
         - force-push rewrites remote history of a protected branch (main)  [git.push.force]
 ```
 
+## Use it with Claude Code
+
+```bash
+.venv/bin/seatbelt install claude-code                  # shows what would change, writes nothing
+.venv/bin/seatbelt install claude-code --scope project --write    # ./.claude/settings.json (or --scope user)
+.venv/bin/seatbelt log                                  # everything the agent ran, with the decision
+```
+
+From then on, every `Bash`/`PowerShell` call goes through seatbelt first. Safe commands are silent; risky ones show the
+usual permission prompt with the reason; dangerous ones are blocked and the agent is told why. Existing settings are
+merged (a `.bak` is kept), and `seatbelt uninstall claude-code --write` removes only seatbelt's entry.
+
+For unattended agents (`claude -p`, CI) use `seatbelt install claude-code --headless --write`, so every would-be prompt
+becomes a block instead of a dead end.
+
+Verified end to end on Claude Code 2.1.302: a force-push to `main` was blocked and the agent reported the reason without
+trying a workaround. The audit log (`~/.local/state/seatbelt/audit.jsonl`, mode 0600) records each command with secrets
+redacted. How the hook contract works, and why a broken hook is the real risk, is in
+[docs/claude-code-hooks.md](docs/claude-code-hooks.md).
+
 ## What it does
 
 1. **Understands the command**, it doesn't grep for strings. It parses pipes, `&&`, subshells, `sudo`, `env`, `bash -c`,
@@ -54,7 +74,7 @@ devices, fork bombs, `git` (force-push, `reset --hard`, `clean -f`, branch/stash
 ## Roadmap (one pull request each)
 
 - [x] Command analysis engine and `seatbelt check`
-- [ ] Claude Code hook (`PreToolUse`), audit log and installer
+- [x] Claude Code hook (`PreToolUse`), audit log and installer
 - [ ] Secrets and exfiltration: credential files, `curl | sh`, `env | curl`, encoded payloads, inline interpreters
 - [ ] Cloud and infra: `aws`, `gcloud`, `az`, `kubectl`, `helm`, `terraform`, SQL, `docker`, production detection
 - [ ] Blast-radius preview: "this deletes 14,203 files (3.2 GB), including `.git`"

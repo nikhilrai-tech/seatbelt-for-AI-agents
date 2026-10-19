@@ -69,3 +69,10 @@ def test_engine_never_raises_on_garbage():
         text = " ".join(rng.choice(pieces) if rng.random() < 0.6 else "".join(rng.choice(alphabet) for _ in range(rng.randint(1, 8)))
                         for _ in range(n))
         analyze(text, Context(**CTX))
+
+
+def test_a_project_that_lives_in_tmp_is_still_a_project():
+    assert level("rm -rf /tmp/scratch-1", cwd="/work/project") == Level.ALLOW
+    assert level("rm -rf src", cwd="/tmp/myproj") == Level.ASK
+    assert level("rm -rf /tmp/myproj/src", cwd="/tmp/myproj") == Level.ASK
+    assert level("rm -rf node_modules", cwd="/tmp/myproj") == Level.ALLOW
