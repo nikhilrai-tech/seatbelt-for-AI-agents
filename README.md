@@ -69,7 +69,7 @@ machine (mode 0600) with secrets redacted before anything is written.
 **How much does it slow things down?** About 60 ms median per command on the machine it was built on (a bare `python3`
 start is 11 ms). Invisible next to a model call.
 
-**Will it nag me?** It is quiet by default: ~100 everyday commands (`npm test`, `kubectl get`, `terraform plan`,
+**Will it nag me?** It is quiet by default: more than 150 everyday commands (`npm test`, `kubectl get`, `terraform plan`,
 `rm -rf node_modules`...) must stay silent in the tests, and `seatbelt learn` suggests allow rules from what you approve.
 
 **What if it breaks?** It fails closed (an internal error becomes an `ask`), the installer adds `onFailure: block` where Claude
@@ -78,7 +78,7 @@ Code supports it, and `seatbelt doctor` verifies the hook is installed and live.
 **Can a repo I clone switch it off?** No. A project's `seatbelt.toml` can only add restrictions; only your user config can
 allow things.
 
-**Which agents?** Claude Code today. The adapter is about 150 lines ([hook.py](src/seatbelt/hook.py)); issues for others welcome.
+**Which agents?** Claude Code today. The adapter is about 130 lines ([hook.py](src/seatbelt/hook.py)); issues for others welcome.
 
 **Is it a sandbox?** No, see "What it cannot do" below.
 
