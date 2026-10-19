@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2
+
+- The PyPI package is named **`seatbelt-guard`** (the command is still `seatbelt`). No code changes.
+
 ## 0.1.1
 
 - **`seatbelt check --stdin [--quiet]`**: check every command on stdin, one per line (bash and zsh history files work) and get a

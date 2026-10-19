@@ -26,7 +26,7 @@ pipx run --spec git+https://github.com/nikhilrai-tech/seatbelt-for-AI-agents sea
 ## Use it with Claude Code in 60 seconds
 
 ```bash
-pip install git+https://github.com/nikhilrai-tech/seatbelt-for-AI-agents    # PyPI: pip install agent-seatbelt (once published)
+pip install git+https://github.com/nikhilrai-tech/seatbelt-for-AI-agents    # PyPI: pip install seatbelt-guard (once published)
 seatbelt install claude-code --write       # shows what would change first if you leave out --write
 seatbelt doctor                            # proves it works: runs the installed hook against a force-push
 ```
@@ -87,6 +87,9 @@ allow things.
 **Which agents?** Claude Code today. The adapter is about 130 lines ([hook.py](src/seatbelt/hook.py)); issues for others welcome.
 
 **Is it a sandbox?** No, see "What it cannot do" below.
+
+**Is this the same as `agentseatbelt` on PyPI?** No, that is a different project (budget caps, rate limits and loop detection for agents).
+This one checks the *shell commands* an agent is about to run. The PyPI package here is `seatbelt-guard`; the command is `seatbelt`.
 
 ## The problem
 
