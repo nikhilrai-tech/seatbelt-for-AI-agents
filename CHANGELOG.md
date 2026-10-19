@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.4
+
+- **Security fix: an agent could switch seatbelt off by running seatbelt.** Editing `settings.json` was blocked, but
+  `seatbelt uninstall claude-code --write` (and `seatbelt install ... --write`, `pip uninstall seatbelt-guard`, `pipx uninstall ...`,
+  or deleting the environment the hook lives in) was allowed. A prompt injection needed only one command. All of these are now
+  `DENY`, in every spelling (`python -m seatbelt`, a full path, `pipx run`, `uvx`), with a message telling the agent to leave it to you.
+  Dry runs (`seatbelt install` without `--write`), `demo`, `doctor`, `check`, `log` and `learn` are unaffected, and so is anything you run in
+  your own terminal (no hook is involved there). Found while reading a comment on the launch post; verified in a real Claude Code session.
+
 ## 0.1.3
 
 - **Warns when the hook points into an ordinary virtual environment.** `seatbelt install` prints a warning and `seatbelt doctor` reports
