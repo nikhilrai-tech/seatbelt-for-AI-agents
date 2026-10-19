@@ -41,6 +41,8 @@ def protected_kind(path: str, ctx: Context) -> Optional[tuple[Level, str]]:
         return DENY, "seatbelt's own configuration"
     if path in audit_paths(ctx) or path.rstrip("/").endswith(".jsonl.1") and "/seatbelt/" in path:
         return DENY, "seatbelt's audit log"
+    if "/pipx/venvs/seatbelt-guard" in path or "/uv/tools/seatbelt-guard" in path or "/site-packages/seatbelt" in path:
+        return DENY, "seatbelt's own installation (the hook lives there; breaking it makes Claude Code run commands unchecked)"
     if base == "authorized_keys":
         return DENY, "SSH authorized_keys (it grants remote access)"
     if path in ("/etc/passwd", "/etc/shadow", "/etc/sudoers") or path.startswith(("/etc/sudoers.d/", "/etc/ssh/", "/etc/pam.d/")):

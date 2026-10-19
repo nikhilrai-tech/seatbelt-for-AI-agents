@@ -296,3 +296,27 @@ ASK	docker push myorg/app:latest
 ASK	npm publish
 ASK	twine upload dist/*
 ASK	cargo publish
+
+# --- the agent must not switch seatbelt off by running seatbelt or its package manager ---------
+DENY	seatbelt uninstall claude-code --write
+DENY	seatbelt uninstall claude-code
+DENY	seatbelt uninstall claude-code --scope project --write
+DENY	python3 -m seatbelt uninstall claude-code --write
+DENY	/home/dev/.local/bin/seatbelt uninstall claude-code --write
+DENY	pipx run --spec seatbelt-guard seatbelt uninstall claude-code --write
+DENY	seatbelt install claude-code --write
+DENY	seatbelt install claude-code --scope project --write --headless
+DENY	pip uninstall -y seatbelt-guard
+DENY	pipx uninstall seatbelt-guard
+DENY	python3 -m pip uninstall seatbelt-guard
+DENY	rm -rf ~/.local/pipx/venvs/seatbelt-guard
+ALLOW	seatbelt install claude-code
+ALLOW	seatbelt demo
+ALLOW	seatbelt doctor
+ALLOW	seatbelt check ls
+ALLOW	seatbelt log
+ALLOW	seatbelt learn
+ALLOW	seatbelt --version
+ALLOW	pip install seatbelt-guard
+ALLOW	pip uninstall requests
+ALLOW	pipx list

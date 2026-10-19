@@ -78,3 +78,21 @@ def test_a_project_that_lives_in_tmp_is_still_a_project():
     assert level("rm -rf src", cwd="/tmp/myproj") == Level.ASK
     assert level("rm -rf /tmp/myproj/src", cwd="/tmp/myproj") == Level.ASK
     assert level("rm -rf node_modules", cwd="/tmp/myproj") == Level.ALLOW
+
+
+def test_an_agent_cannot_switch_seatbelt_off_by_running_seatbelt():
+    """Found in review: editing settings.json was blocked, but the official uninstall command was not."""
+    for cmd in ("seatbelt uninstall claude-code --write", "seatbelt uninstall claude-code", "python3 -m seatbelt uninstall claude-code --write",
+                "/opt/venv/bin/seatbelt uninstall claude-code --write", "uvx --from seatbelt-guard seatbelt uninstall claude-code --write",
+                "sudo seatbelt uninstall claude-code --write", "bash -c 'seatbelt uninstall claude-code --write'",
+                "cd ~ && seatbelt install claude-code --write", "pip uninstall -y seatbelt-guard", "pipx uninstall seatbelt-guard",
+                "uv tool uninstall seatbelt-guard", "python -m pip uninstall seatbelt-guard", "rm -rf ~/.local/pipx/venvs/seatbelt-guard"):
+        v = analyze(cmd, Context(cwd="/work/project", home="/home/dev", environ={}))
+        assert v.level == Level.DENY and ("own guardrail" in v.reason or "own installation" in v.reason), cmd
+
+
+def test_the_rest_of_the_seatbelt_cli_is_not_blocked():
+    for cmd in ("seatbelt install claude-code", "seatbelt install claude-code --scope project", "seatbelt demo", "seatbelt doctor",
+                "seatbelt check 'rm -rf /'", "seatbelt log --tail 5", "seatbelt learn", "seatbelt --version", "pip install -U seatbelt-guard",
+                "pip uninstall requests", "pipx install seatbelt-guard"):
+        assert analyze(cmd, Context(cwd="/work/project", home="/home/dev", environ={})).level == Level.ALLOW, cmd

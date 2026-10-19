@@ -163,7 +163,7 @@ redacted. How the hook contract works, and why a broken hook is the real risk, i
 | Run code from the network | `curl ... \| sh`, `bash <(curl ...)`, `curl -o x.sh ... && bash x.sh` | ASK |
 | Hide what runs | `echo <base64> \| base64 -d \| bash`, `python -c "exec(b64decode(...))"` | ASK |
 | Hide it in a script | the agent writes `cleanup.py` then runs it: scripts are read and checked too, including paths built with `os.path.join` / `Path / "x"` | same as the code inside |
-| Switch off the guardrails | edit `.claude/settings.json`, seatbelt's config or audit log, `authorized_keys` | DENY |
+| Switch off the guardrails | edit `.claude/settings.json`, seatbelt's config or audit log, `authorized_keys`; **run `seatbelt uninstall`, `pip uninstall seatbelt-guard`, or delete the environment the hook lives in** | DENY |
 | Plant something that runs later | `.bashrc`, `.git/hooks/*`, `.github/workflows/*` | ASK |
 | Expose the machine | `ngrok`, `python -m http.server`, `ssh -R` | ASK |
 
