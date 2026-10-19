@@ -1,15 +1,15 @@
 # seatbelt for AI agents
 
 [![tests](https://github.com/nikhilrai-tech/seatbelt-for-AI-agents/actions/workflows/ci.yml/badge.svg)](https://github.com/nikhilrai-tech/seatbelt-for-AI-agents/actions/workflows/ci.yml)
-[![license: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
-[![dependencies: none](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](pyproject.toml)
+[![license: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/nikhilrai-tech/seatbelt-for-AI-agents/blob/main/LICENSE)
+[![python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://github.com/nikhilrai-tech/seatbelt-for-AI-agents/blob/main/pyproject.toml)
+[![dependencies: none](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](https://github.com/nikhilrai-tech/seatbelt-for-AI-agents/blob/main/pyproject.toml)
 [![PyPI](https://img.shields.io/pypi/v/seatbelt-guard.svg)](https://pypi.org/project/seatbelt-guard/)
 
 **Your AI agent can `terraform destroy` production, `cat ~/.aws/credentials | curl ...`, or `git push --force origin main`.
 seatbelt reads the command first and stops it.**
 
-![seatbelt demo](docs/demo.gif)
+![seatbelt demo](https://raw.githubusercontent.com/nikhilrai-tech/seatbelt-for-AI-agents/main/docs/demo.gif)
 
 It works out what a command *really* does (pipes, `bash -c`, `$(...)`, base64 tricks, the script the agent just wrote),
 knows when it is pointed at **production**, shows what a deletion would actually touch before asking, and keeps a log of
@@ -60,7 +60,7 @@ Every feature was tried against real Claude Code sessions, and the sessions foun
 - a project that lived under `/tmp` was treated as scratch space, so `rm -rf src` was allowed.
 
 The notes on how the hook contract really behaves (a broken hook fails open, `allow` skips your prompts, which events fire
-when) are in [docs/claude-code-hooks.md](docs/claude-code-hooks.md).
+when) are in [docs/claude-code-hooks.md](https://github.com/nikhilrai-tech/seatbelt-for-AI-agents/blob/main/docs/claude-code-hooks.md).
 
 ## FAQ
 
@@ -85,7 +85,7 @@ Code supports it, and `seatbelt doctor` verifies the hook is installed and live.
 **Can a repo I clone switch it off?** No. A project's `seatbelt.toml` can only add restrictions; only your user config can
 allow things.
 
-**Which agents?** Claude Code today. The adapter is about 130 lines ([hook.py](src/seatbelt/hook.py)); issues for others welcome.
+**Which agents?** Claude Code today. The adapter is about 130 lines ([hook.py](https://github.com/nikhilrai-tech/seatbelt-for-AI-agents/blob/main/src/seatbelt/hook.py)); issues for others welcome.
 
 **Is it a sandbox?** No, see "What it cannot do" below.
 
@@ -141,7 +141,7 @@ becomes a block instead of a dead end.
 Verified end to end on Claude Code 2.1.302: a force-push to `main` was blocked and the agent reported the reason without
 trying a workaround. The audit log (`~/.local/state/seatbelt/audit.jsonl`, mode 0600) records each command with secrets
 redacted. How the hook contract works, and why a broken hook is the real risk, is in
-[docs/claude-code-hooks.md](docs/claude-code-hooks.md).
+[docs/claude-code-hooks.md](https://github.com/nikhilrai-tech/seatbelt-for-AI-agents/blob/main/docs/claude-code-hooks.md).
 
 ## What it does
 
@@ -219,7 +219,7 @@ Redis, Mongo, migration tools (`rails`, `prisma`, `django`, `alembic`, ...), `do
 
 ## Tuning it
 
-`~/.config/seatbelt/config.toml`, or `$XDG_CONFIG_HOME/seatbelt/config.toml` if you set it (see [examples/config.toml](examples/config.toml)):
+`~/.config/seatbelt/config.toml`, or `$XDG_CONFIG_HOME/seatbelt/config.toml` if you set it (see [examples/config.toml](https://github.com/nikhilrai-tech/seatbelt-for-AI-agents/blob/main/examples/config.toml)):
 
 ```toml
 trusted_hosts = ["api.github.com", "*.mycompany.com"]   # secret variables may go to these without asking
@@ -305,11 +305,11 @@ it catches the mistakes and the prompt-injected commands *before* they get that 
 
 ## License
 
-Apache-2.0, see [LICENSE](LICENSE). Commits made before this change were published under the MIT license; copies obtained
+Apache-2.0, see [LICENSE](https://github.com/nikhilrai-tech/seatbelt-for-AI-agents/blob/main/LICENSE). Commits made before this change were published under the MIT license; copies obtained
 under MIT may continue to be used under MIT.
 
 ## Contributing
 
 If seatbelt saved you a bad day, a star helps others find it. If it gets a command wrong, in either direction, please open an
 issue with the template and `seatbelt check --json '<command>'`; those reports are the most useful thing you can send.
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
+See [CONTRIBUTING.md](https://github.com/nikhilrai-tech/seatbelt-for-AI-agents/blob/main/CONTRIBUTING.md) and [SECURITY.md](https://github.com/nikhilrai-tech/seatbelt-for-AI-agents/blob/main/SECURITY.md).

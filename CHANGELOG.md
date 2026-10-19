@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.5
+
+- The PyPI page now shows the demo GIF and its links work (the README used relative paths, which do not resolve on pypi.org). No code changes.
+
 ## 0.1.4
 
 - **Security fix: an agent could switch seatbelt off by running seatbelt.** Editing `settings.json` was blocked, but
