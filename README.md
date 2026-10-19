@@ -19,6 +19,21 @@ People now let agents run `aws`, `kubectl`, `terraform`, `git` and SQL on their 
 | It hides what it does | `bash -c "$(echo cm0gLXJmIH4= \| base64 -d)"` |
 | Nobody knows what happened | no record of what the agent ran |
 
+## 60-second start
+
+```bash
+pip install git+https://github.com/nikhilrai-tech/seatbelt-for-AI-agents    # PyPI: pip install agent-seatbelt (once published)
+seatbelt demo                              # a guided tour; nothing is executed
+seatbelt install claude-code --write       # wire it into Claude Code (shows what changes first without --write)
+seatbelt doctor                            # proves it is in place: it runs the installed hook against a force-push
+```
+
+![seatbelt demo](docs/demo.png)
+
+`seatbelt doctor` exists because the worst failure of a guardrail is a silent one: Claude Code lets commands through when a
+hook cannot run (binary moved, venv deleted). The doctor checks the settings *and* runs the installed hook for real, and
+says what to fix.
+
 ## Try it
 
 ```bash
