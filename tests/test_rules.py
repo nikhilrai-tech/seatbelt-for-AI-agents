@@ -58,14 +58,23 @@ def test_ordinary_commands_are_not_flagged(cmd):
     assert level(cmd) == Level.ALLOW, analyze(cmd, Context(**CTX)).reason
 
 
-def test_engine_never_raises_on_garbage():
+def test_engine_never_raises_on_garbage(monkeypatch):
     """A crash in a hook lets the command through, so the engine must survive anything."""
+    monkeypatch.setenv("SEATBELT_PREVIEW", "off")  # random `rm` targets would otherwise make this walk the disk
     rng = random.Random(1234)
     alphabet = string.printable + "'\"`$(){}[]\\|&;<>*?~#!"
     pieces = ["rm", "-rf", "/", "$(", ")", "`", "'", '"', "bash -c", "sudo", "|", "&&", "<<EOF", "\n", "$'", "\\x", "{}", "xargs",
-              "find", "-exec", "ssh", "eval", "cd", "~", "$HOME", "${", "<(", "git push -f"]
+              "find", "-exec", "ssh", "eval", "cd", "~", "$HOME", "${", "<(", "git push -f", "curl", "|", "base64 -d", "python -c",
+              "~/.ssh/id_rsa", ".env", "<<EOF", "EOF", "nc", "echo", "> ~/.bashrc", "$(cat", "tee"]
     for _ in range(3000):
         n = rng.randint(1, 12)
         text = " ".join(rng.choice(pieces) if rng.random() < 0.6 else "".join(rng.choice(alphabet) for _ in range(rng.randint(1, 8)))
                         for _ in range(n))
         analyze(text, Context(**CTX))
+
+
+def test_a_project_that_lives_in_tmp_is_still_a_project():
+    assert level("rm -rf /tmp/scratch-1", cwd="/work/project") == Level.ALLOW
+    assert level("rm -rf src", cwd="/tmp/myproj") == Level.ASK
+    assert level("rm -rf /tmp/myproj/src", cwd="/tmp/myproj") == Level.ASK
+    assert level("rm -rf node_modules", cwd="/tmp/myproj") == Level.ALLOW

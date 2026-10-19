@@ -26,6 +26,7 @@ class Verdict:
     level: Level
     findings: list[Finding] = field(default_factory=list)
     commands: list[Command] = field(default_factory=list)
+    impact: list[str] = field(default_factory=list)  # blast-radius sentences ("deletes 1,204 files (38 MB) ...")
 
     @property
     def reason(self) -> str:
@@ -34,9 +35,13 @@ class Verdict:
         for f in sorted(self.findings, key=lambda f: -int(f.level)):
             if f.message not in seen:
                 seen.append(f.message)
-        return "; ".join(seen[:4]) + (f" (+{len(seen) - 4} more)" if len(seen) > 4 else "")
+        text = "; ".join(seen[:4]) + (f" (+{len(seen) - 4} more)" if len(seen) > 4 else "")
+        if self.impact:
+            text += ". Impact: " + "; ".join(self.impact[:3])
+        return text
 
     def to_dict(self) -> dict:
         return {"decision": self.level.name.lower(), "reason": self.reason,
+                "impact": self.impact,
                 "findings": [{"rule": f.rule, "level": f.level.name.lower(), "category": f.category,
                               "message": f.message, "command": f.command} for f in self.findings]}

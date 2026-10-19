@@ -5,13 +5,17 @@ import re
 from typing import Optional
 
 from .context import Context, Resolver
+from . import preview
 from .model import Finding, Level, Verdict
+from .policy import Policy
 from .rules import rules_for
+from .rules.pipeline import analyze_pipelines
 from .rules.fs import DISK_DEVICE_PREFIXES, HARMLESS_DEVICES
 from .shell import Command, parse
 
 FORK_BOMB = re.compile(r":\s*\(\s*\)\s*\{[^}]*:\s*\|\s*:[^}]*\}")
 WRITE_OPS = {">", ">>", ">|", "&>", "&>>", "<>"}
+_TRAVERSAL = re.compile(r"(?:^|[\s/=:])\.\.(?:$|[\s/])")
 PROBLEM_TEXT = {
     "dynamic-command": "the program to run is computed at runtime, so it cannot be checked",
     "eval": "an `eval` of a runtime string runs code that cannot be checked",
@@ -62,12 +66,47 @@ def analyze(text: str, ctx: Optional[Context] = None) -> Verdict:
             findings += fn(cmd, ctx, res)
         findings += _redirects(cmd, res)
         cur = _track_cwd(cmd, cur, res)
+    findings += analyze_pipelines(parsed.commands, ctx, res)
+    findings = _apply_policy(findings, parsed.commands, ctx.policy)
 
+    verdict = verdict_of(findings, ctx, parsed.commands)
+    if verdict.level != Level.ALLOW:
+        try:
+            verdict.impact = preview.collect(parsed.commands, verdict.findings, ctx, res)
+        except Exception:  # a preview is a nicety: it must never change or break the decision
+            verdict.impact = []
+    return verdict
+
+
+def _apply_policy(findings: list[Finding], commands: list[Command], policy: Policy) -> list[Finding]:
+    """User/project rules. `deny` and `ask` add findings; `allow` only removes ASKs (never DENY, never tamper)."""
+    if policy.error:
+        findings = findings + [Finding("policy.invalid", Level.ASK, "policy",
+                                       f"seatbelt's configuration is broken, so your rules are not being applied: {policy.error}", "")]
+    allowed: set[str] = set()
+    for cmd in commands:
+        text = " ".join(cmd.argv)
+        bare = " ".join(a for a in cmd.argv if not a.startswith("-"))  # `npm run --silent deploy` is still `npm run deploy`
+        for rules, level, word in ((policy.deny, Level.DENY, "denied"), (policy.ask, Level.ASK, "flagged")):
+            r = Policy.match(rules, text) or Policy.match(rules, bare)
+            if r:
+                findings = findings + [Finding(f"policy.{word}", level, "policy",
+                                               r.reason or f"{word} by your seatbelt policy ({r.pattern})", cmd.raw)]
+        # a glob `*` also matches `..` and `$VAR`, so `rm -rf build/*` must not wave through `rm -rf build/../..`
+        if Policy.match(policy.allow, text) and not _TRAVERSAL.search(text) and not any(w.dyn for w in cmd.words):
+            allowed.add(cmd.raw)
+    if allowed:
+        findings = [f for f in findings if not (f.level == Level.ASK and f.command in allowed and f.category not in ("tamper", "policy"))]
+    return findings
+
+
+def verdict_of(findings: list[Finding], ctx: Context, commands: Optional[list[Command]] = None) -> Verdict:
+    """Deduplicate, take the strictest level, and apply headless mode."""
     unique: list[Finding] = []
     for f in findings:
         if (f.rule, f.message) not in {(u.rule, u.message) for u in unique}:
             unique.append(f)
     level = max((f.level for f in unique), default=Level.ALLOW)
-    if ctx.headless and level == Level.ASK:
+    if (ctx.headless or ctx.policy.headless is True) and level == Level.ASK:
         level = Level.DENY
-    return Verdict(level, unique, parsed.commands)
+    return Verdict(level, unique, commands or [])

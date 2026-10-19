@@ -1,0 +1,25 @@
+# ~/.config/seatbelt/config.toml  (your user config: the only place that can allow things)
+
+# Words that mark an environment as production, on top of prod / production / prd.
+prod_patterns = ["live", "eu-central-prd"]
+
+# Secret variables may be sent to these hosts without asking (everything else still asks).
+trusted_hosts = ["api.github.com", "*.mycompany.com"]
+
+# Nobody can answer prompts here (CI, `claude -p`): every ASK becomes a DENY.
+headless = false
+
+[[allow]]
+command = "git push origin feature/*"
+reason = "agents may push feature branches"
+
+[[allow]]
+command = "terraform apply -auto-approve -var-file=dev.tfvars"
+
+[[deny]]
+command = "kubectl * --context=prod*"
+reason = "no agent touches the prod cluster"
+
+[[ask]]
+command = "docker push *"
+reason = "check the tag before anything is pushed"

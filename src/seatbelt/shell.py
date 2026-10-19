@@ -598,7 +598,7 @@ class Parser:
                 self.parse(inner.script, nvia, remote or inner.remote, depth + 1)
             elif inner.words:
                 before = len(self.commands)
-                self._emit(inner.words, {}, [], False, False, pid, nvia, remote or inner.remote, depth + 1)
+                self._emit(inner.words, {}, [], pipe_in, pipe_out, pid, nvia, remote or inner.remote, depth + 1)
                 if inner.stdin_args:
                     self.commands[before].stdin_args = True
 
