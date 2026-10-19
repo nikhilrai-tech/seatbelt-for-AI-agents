@@ -4,6 +4,7 @@
 [![license: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 [![dependencies: none](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](pyproject.toml)
+[![PyPI](https://img.shields.io/pypi/v/seatbelt-guard.svg)](https://pypi.org/project/seatbelt-guard/)
 
 **Your AI agent can `terraform destroy` production, `cat ~/.aws/credentials | curl ...`, or `git push --force origin main`.
 seatbelt reads the command first and stops it.**
@@ -20,13 +21,13 @@ everything the agent ran. Zero dependencies, no network, about 60 ms per command
 ## Try it in 10 seconds (installs nothing)
 
 ```bash
-pipx run --spec git+https://github.com/nikhilrai-tech/seatbelt-for-AI-agents seatbelt demo
+pipx run --spec seatbelt-guard seatbelt demo
 ```
 
 ## Use it with Claude Code in 60 seconds
 
 ```bash
-pip install git+https://github.com/nikhilrai-tech/seatbelt-for-AI-agents    # PyPI: pip install seatbelt-guard (once published)
+pip install seatbelt-guard
 seatbelt install claude-code --write       # shows what would change first if you leave out --write
 seatbelt doctor                            # proves it works: runs the installed hook against a force-push
 ```
