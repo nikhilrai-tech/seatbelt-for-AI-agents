@@ -27,7 +27,7 @@ pipx run --spec seatbelt-guard seatbelt demo
 ## Use it with Claude Code in 60 seconds
 
 ```bash
-pip install seatbelt-guard
+pipx install seatbelt-guard                # a tool install keeps the hook's path stable (pip install works for a try-out)
 seatbelt install claude-code --write       # shows what would change first if you leave out --write
 seatbelt doctor                            # proves it works: runs the installed hook against a force-push
 ```

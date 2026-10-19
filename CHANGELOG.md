@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3
+
+- **Warns when the hook points into an ordinary virtual environment.** `seatbelt install` prints a warning and `seatbelt doctor` reports
+  a warning: delete or recreate that environment and the hook stops working silently (Claude Code then runs commands unchecked).
+  Tool installs (`pipx`, `uv tool`) are recognised as safe, and `seatbelt install` now prefers the stable launcher on PATH.
+
 ## 0.1.2
 
 - The PyPI package is named **`seatbelt-guard`** (the command is still `seatbelt`). No code changes.

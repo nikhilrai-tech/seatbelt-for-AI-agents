@@ -47,7 +47,7 @@ def run(tmp_path, runner=None, ver=NEW, **kw):
 
 
 def test_a_healthy_install_has_no_problems(tmp_path):
-    checks = run(tmp_path, command=f"{sys.executable} -m seatbelt hook")
+    checks = run(tmp_path, command="/bin/true seatbelt hook")  # a stable interpreter, not a throwaway virtualenv
     assert not [c for c in checks if c.status in (FAIL, WARN)], [c for c in checks if c.status in (FAIL, WARN)]
     assert "Everything is in place" in doctor.format_checks(checks)
     assert statuses(checks)["user: a failing hook blocks (onFailure=block)"] == OK
@@ -172,3 +172,46 @@ def test_short_demo_shows_three_examples_per_scenario():
     short, wrong = demo.run_demo(short=True)
     assert wrong == [] and len(short.splitlines()) < len(full.splitlines()) - 10
     assert short.count("ALLOW") == 3 and "git push --force origin main" in short
+
+
+# ---------------------------------------------------------------- a hook inside a throwaway virtualenv
+
+def make_venv(tmp_path, name="myenv"):
+    env = tmp_path / name
+    (env / "bin").mkdir(parents=True)
+    (env / "pyvenv.cfg").write_text("home = /usr/bin\n")
+    prog = env / "bin" / "python3"
+    prog.write_text("#!/bin/sh\n")
+    prog.chmod(0o755)
+    return prog
+
+
+def test_an_ordinary_virtualenv_is_fragile_but_tool_installers_are_not(tmp_path):
+    prog = make_venv(tmp_path)
+    assert install.is_fragile_python_env(str(prog))
+    assert not install.is_fragile_python_env("/usr/bin/python3")
+    assert not install.is_fragile_python_env(str(tmp_path / "home/.local/pipx/venvs/seatbelt-guard/bin/python3"))
+    assert not install.is_fragile_python_env("/home/me/.local/share/uv/tools/seatbelt-guard/bin/python")
+
+
+def test_doctor_warns_when_the_hook_lives_in_a_virtualenv(tmp_path):
+    prog = make_venv(tmp_path)
+    checks = run(tmp_path, command=f"{prog} -m seatbelt hook")
+    c = next(c for c in checks if c.title == "user: the hook lives in a virtual environment")
+    assert c.status == WARN and "pipx install seatbelt-guard" in c.fix
+
+
+def test_doctor_is_quiet_for_a_stable_interpreter(tmp_path):
+    checks = run(tmp_path, command="/bin/true seatbelt hook")
+    assert not [c for c in checks if "virtual environment" in c.title]
+
+
+def test_install_prints_the_warning_when_run_from_a_virtualenv(tmp_path, monkeypatch, capsys):
+    prog = make_venv(tmp_path)
+    monkeypatch.setattr(install, "hook_command", lambda headless=False: f"{prog} -m seatbelt hook")
+    assert main(["install", "claude-code", "--settings-file", str(tmp_path / "s.json")]) == 0
+    err = capsys.readouterr().err
+    assert "WARNING" in err and "pipx install seatbelt-guard" in err
+    monkeypatch.setattr(install, "hook_command", lambda headless=False: "/usr/bin/python3 -m seatbelt hook")
+    main(["install", "claude-code", "--settings-file", str(tmp_path / "s2.json")])
+    assert "WARNING" not in capsys.readouterr().err
