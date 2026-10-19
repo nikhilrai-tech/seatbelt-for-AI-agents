@@ -6,6 +6,7 @@ from typing import Optional
 
 from .context import Context, Resolver
 from .model import Finding, Level, Verdict
+from .policy import Policy
 from .rules import rules_for
 from .rules.pipeline import analyze_pipelines
 from .rules.fs import DISK_DEVICE_PREFIXES, HARMLESS_DEVICES
@@ -64,8 +65,30 @@ def analyze(text: str, ctx: Optional[Context] = None) -> Verdict:
         findings += _redirects(cmd, res)
         cur = _track_cwd(cmd, cur, res)
     findings += analyze_pipelines(parsed.commands, ctx, res)
+    findings = _apply_policy(findings, parsed.commands, ctx.policy)
 
     return verdict_of(findings, ctx, parsed.commands)
+
+
+def _apply_policy(findings: list[Finding], commands: list[Command], policy: Policy) -> list[Finding]:
+    """User/project rules. `deny` and `ask` add findings; `allow` only removes ASKs (never DENY, never tamper)."""
+    if policy.error:
+        findings = findings + [Finding("policy.invalid", Level.ASK, "policy",
+                                       f"seatbelt's configuration is broken, so your rules are not being applied: {policy.error}", "")]
+    allowed: set[str] = set()
+    for cmd in commands:
+        text = " ".join(cmd.argv)
+        bare = " ".join(a for a in cmd.argv if not a.startswith("-"))  # `npm run --silent deploy` is still `npm run deploy`
+        for rules, level, word in ((policy.deny, Level.DENY, "denied"), (policy.ask, Level.ASK, "flagged")):
+            r = Policy.match(rules, text) or Policy.match(rules, bare)
+            if r:
+                findings = findings + [Finding(f"policy.{word}", level, "policy",
+                                               r.reason or f"{word} by your seatbelt policy ({r.pattern})", cmd.raw)]
+        if Policy.match(policy.allow, text):
+            allowed.add(cmd.raw)
+    if allowed:
+        findings = [f for f in findings if not (f.level == Level.ASK and f.command in allowed and f.category not in ("tamper", "policy"))]
+    return findings
 
 
 def verdict_of(findings: list[Finding], ctx: Context, commands: Optional[list[Command]] = None) -> Verdict:
@@ -75,6 +98,6 @@ def verdict_of(findings: list[Finding], ctx: Context, commands: Optional[list[Co
         if (f.rule, f.message) not in {(u.rule, u.message) for u in unique}:
             unique.append(f)
     level = max((f.level for f in unique), default=Level.ALLOW)
-    if ctx.headless and level == Level.ASK:
+    if (ctx.headless or ctx.policy.headless is True) and level == Level.ASK:
         level = Level.DENY
     return Verdict(level, unique, commands or [])

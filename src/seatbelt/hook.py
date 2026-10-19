@@ -23,6 +23,7 @@ from typing import Optional
 
 from .audit import AuditLog
 from .context import Context
+from . import policy as policy_mod
 from .engine import analyze, verdict_of
 from .rules.filetools import FILE_TOOLS, file_findings, target_path
 from .model import Finding, Level, Verdict
@@ -64,7 +65,9 @@ def _context(payload: dict, headless: bool) -> Context:
     cwd = payload.get("cwd")
     if isinstance(cwd, str) and cwd:
         kw["cwd"] = cwd
-    return Context(**kw)
+    ctx = Context(**kw)
+    ctx.policy = policy_mod.load(ctx.cwd, ctx.home, ctx.environ)
+    return ctx
 
 
 def handle(payload: dict, headless: bool = False, audit: Optional[AuditLog] = None) -> Optional[dict]:

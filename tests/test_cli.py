@@ -6,7 +6,7 @@ import pytest
 from seatbelt.cli import main
 
 CORPUS = str(Path(__file__).parent.parent / "examples" / "commands.txt")
-CTX = ["--cwd", "/work/project", "--home", "/home/dev"]
+CTX = ["--cwd", "/work/project", "--home", "/home/dev", "--no-config"]
 
 
 def test_exit_codes_mirror_the_verdict(capsys):

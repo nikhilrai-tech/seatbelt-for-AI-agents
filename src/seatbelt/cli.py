@@ -7,6 +7,7 @@ from pathlib import Path
 
 from . import __version__, hook, install
 from .audit import AuditLog
+from . import policy as policy_mod
 from .context import Context
 from .engine import analyze
 from .model import Level, Verdict
@@ -55,6 +56,8 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--cwd", help="pretend the command runs here (default: current directory)")
     c.add_argument("--home", help="pretend this is the home directory")
     c.add_argument("--headless", action="store_true", help="nobody can answer prompts: ASK becomes DENY")
+    c.add_argument("--config", help="seatbelt config file (default: ~/.config/seatbelt/config.toml, plus ./seatbelt.toml)")
+    c.add_argument("--no-config", action="store_true", help="ignore every config file (reproducible results)")
     c.add_argument("--json", action="store_true")
     c.add_argument("--no-color", action="store_true")
 
@@ -157,6 +160,13 @@ def main(argv: list[str] | None = None) -> int:
         if args.home:
             kw["home"] = args.home
         ctx = Context(headless=args.headless, **kw)
+        if not args.no_config:
+            env = dict(ctx.environ)
+            if args.config:
+                env["SEATBELT_CONFIG"] = args.config
+            ctx.policy = policy_mod.load(ctx.cwd, ctx.home, env)
+            for w in ctx.policy.warnings:
+                print(f"note: {w}", file=sys.stderr)
         color = sys.stdout.isatty() and not args.no_color
         if args.file:
             return _check_file(args.file, ctx, color)

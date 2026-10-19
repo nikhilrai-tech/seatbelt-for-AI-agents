@@ -77,3 +77,11 @@ uses the exact script); computing a path at runtime is still out of reach, which
 | `Read .env` | ask | blocked in non-interactive mode, reason shown, agent did not try `cat` instead |
 | `curl -H "Authorization: Bearer $GITHUB_TOKEN" ...` | ask | blocked with "sends the secret variable $GITHUB_TOKEN to host" |
 | `python3 hook.py` (writes `.git/hooks/pre-commit`) | ask | blocked, and the agent read the reason from inside the script check |
+
+## A bypass the policy file had
+
+A project `seatbelt.toml` denied `npm run deploy*`. In a real session the agent was blocked on `npm run deploy`, but
+`npm run --silent deploy` ran: a glob over literal text is trivially dodged by one more flag. `deny` and `ask` rules are
+now also matched with the flags removed. `allow` rules stay literal on purpose: matching them loosely would let
+`git push -f origin feature/x` through an allow written for `git push origin feature/*`. A flag that takes a value leaves
+the value behind (`npm --prefix app run deploy`), so the README tells people to write `npm * run deploy*`.

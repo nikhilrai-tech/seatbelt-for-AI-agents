@@ -177,3 +177,122 @@ ASK	echo "x" >> ~/.zshrc
 ALLOW	echo hi > notes.txt
 ALLOW	sed -i 's/a/b/' src/app.py
 ALLOW	cat ~/.claude/settings.json
+
+# --- AWS ---------------------------------------------------------------------------------
+ALLOW	aws s3 ls
+ALLOW	aws ec2 describe-instances --region us-east-1
+ALLOW	aws sts get-caller-identity
+ALLOW	aws lambda list-functions
+ALLOW	aws s3 cp ./build s3://my-bucket/build --recursive
+ALLOW	aws s3 sync ./dist s3://my-bucket
+ALLOW	aws ec2 run-instances --image-id ami-1 --instance-type t3.micro
+ALLOW	aws ec2 terminate-instances --instance-ids i-1 --dry-run
+ASK	aws ec2 terminate-instances --instance-ids i-123
+ASK	aws s3 rm s3://bucket/key
+ASK	aws s3 rm s3://bucket --recursive
+ASK	aws s3 sync ./dist s3://bucket --delete
+ASK	aws rds delete-db-instance --db-instance-identifier test-db --skip-final-snapshot
+ASK	aws iam create-access-key --user-name bob
+ASK	aws secretsmanager get-secret-value --secret-id db
+ASK	aws ssm get-parameter --name /x --with-decryption
+ASK	aws ec2 run-instances --image-id ami-1 --count 20
+ASK	aws ec2 run-instances --image-id ami-1 --instance-type p4d.24xlarge
+ASK	aws ec2 authorize-security-group-ingress --group-id sg-1 --protocol tcp --port 22 --cidr 0.0.0.0/0
+DENY	aws s3 rm s3://prod-assets --recursive
+DENY	aws rds delete-db-instance --db-instance-identifier prod-db --skip-final-snapshot
+DENY	aws --profile production ec2 terminate-instances --instance-ids i-1
+DENY	aws s3 rb s3://prod-backups --force
+ASK	aws --profile prod ec2 create-tags --resources i-1 --tags Key=a,Value=b
+
+# --- GCP, Azure, PaaS, GitHub ------------------------------------------------------------
+ALLOW	gcloud compute instances list
+ALLOW	gcloud compute instances describe delete-me
+ALLOW	az vm list
+ALLOW	gh pr list
+ASK	gcloud compute instances delete my-vm
+ASK	gcloud projects delete sandbox-1
+ASK	gsutil rm gs://bucket/file
+ASK	az group delete -n rg-test --yes
+ASK	flyctl apps destroy myapp
+ASK	heroku pg:reset -a myapp-staging
+ASK	gh release delete v1.0
+DENY	gcloud projects delete my-prod-project
+DENY	gsutil -m rm -r gs://prod-backups
+DENY	az group delete -n rg-prod --yes
+DENY	heroku apps:destroy -a myapp-production
+DENY	gh repo delete myorg/repo --yes
+
+# --- Kubernetes and Helm -----------------------------------------------------------------
+ALLOW	kubectl get pods
+ALLOW	kubectl get pods -n production
+ALLOW	kubectl logs deploy/web
+ALLOW	kubectl apply -f deploy.yaml
+ALLOW	kubectl apply -f deploy.yaml --dry-run=client
+ALLOW	kubectl delete pod web-1 --dry-run=server
+ALLOW	helm upgrade web ./chart --dry-run
+ASK	kubectl delete pod web-1
+ASK	kubectl delete ns staging
+ASK	kubectl drain node-1
+ASK	kubectl get secret db -o yaml
+ASK	kubectl scale deploy web --replicas=0
+ASK	kubectl --context prod apply -f deploy.yaml
+ASK	kubectl --context prod-cluster delete deployment web
+ASK	helm uninstall web -n staging
+ASK	helm upgrade web ./chart -n prod
+DENY	kubectl delete ns production
+DENY	kubectl delete pods --all -n prod
+DENY	helm uninstall web -n production
+
+# --- Terraform and friends ---------------------------------------------------------------
+ALLOW	terraform plan
+ALLOW	terraform apply
+ALLOW	terraform fmt -check
+ASK	terraform apply -auto-approve
+ASK	terraform destroy
+ASK	terraform state rm aws_instance.web
+ASK	terraform apply -var-file=prod.tfvars
+ASK	pulumi destroy
+ASK	cdk destroy
+DENY	terraform apply -auto-approve -var-file=prod.tfvars
+DENY	terraform destroy -var-file=production.tfvars
+DENY	terraform -chdir=infra/prod apply -auto-approve
+
+# --- Databases ---------------------------------------------------------------------------
+ALLOW	psql -c "SELECT * FROM users LIMIT 5"
+ALLOW	psql -c "DELETE FROM orders WHERE id = 5"
+ALLOW	psql -c "INSERT INTO t VALUES (1)"
+ALLOW	sqlite3 app.db "select count(*) from users"
+ASK	psql -c "DROP TABLE users"
+ASK	psql -c "DELETE FROM orders"
+ASK	psql -c "UPDATE users SET admin = true"
+ASK	psql -c "TRUNCATE orders"
+ASK	psql -c "INSERT INTO t VALUES (1)" -h prod-db
+ASK	echo "DROP TABLE users;" | psql
+ASK	redis-cli FLUSHALL
+ASK	dropdb mydb
+ASK	rails db:drop
+ASK	python manage.py flush
+ASK	python3 manage.py migrate app zero
+ASK	prisma migrate reset
+DENY	psql -h prod-db.internal -c "DROP TABLE users"
+DENY	mysql -h prod-mysql -e "TRUNCATE orders"
+DENY	redis-cli -h prod-redis FLUSHALL
+DENY	dropdb -h prod-db app
+DENY	RAILS_ENV=production rails db:drop
+DENY	psql -c "DROP DATABASE app" -h production-db
+
+# --- Containers and publishing -----------------------------------------------------------
+ALLOW	docker ps
+ALLOW	docker build -t app .
+ALLOW	docker compose down
+ALLOW	npm install
+ALLOW	npm publish --dry-run
+ASK	docker system prune -af --volumes
+ASK	docker volume rm pgdata
+ASK	docker run --privileged ubuntu
+ASK	docker run -v /var/run/docker.sock:/var/run/docker.sock ubuntu
+ASK	docker compose down -v
+ASK	docker push myorg/app:latest
+ASK	npm publish
+ASK	twine upload dist/*
+ASK	cargo publish

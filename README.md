@@ -86,6 +86,51 @@ Covered so far: `rm`, `find -delete`, `dd`, `mkfs`/`fdisk` and friends, `chmod`/
 devices, fork bombs, `git` (force-push, `reset --hard`, `clean -f`, branch/stash/reflog destruction, history rewrites),
 `sudo`, `kill`, `systemctl`, `crontab -r`, firewalls, power commands.
 
+## Production is detected, not assumed
+
+Deleting a dev namespace and deleting prod are different acts, so seatbelt works out *where* a command runs:
+`--profile prod`, `--context prod-eu`, `-n production`, `-var-file=prod.tfvars`, a host or database called `prod-db`,
+`AWS_PROFILE`, `TF_WORKSPACE`, `RAILS_ENV`, `DATABASE_URL`, kubeconfig's `current-context`, terraform's
+`.terraform/environment` file, an `infra/prod/` directory. Whole words only (`products-bucket` is not production).
+
+| | dev / unknown | production |
+|---|---|---|
+| Read (`kubectl get`, `aws ... describe`, `SELECT`, `terraform plan`) | silent | silent |
+| Change (`apply`, `create`, `INSERT`, `helm upgrade`) | silent | ASK |
+| Destroy (`delete pod`, `terminate`, `DELETE ... WHERE`) | ASK | ASK |
+| Destroy for good (`kubectl delete ns`, `aws rds delete-db-instance`, `s3 rm --recursive`, `DROP TABLE`, `terraform destroy`, `FLUSHALL`, `docker volume rm`) | ASK | **DENY** |
+| Applying without a human reading the plan (`terraform apply -auto-approve`) | ASK | **DENY** |
+
+Covered: `aws` (incl. `s3`, IAM changes, secret reads, expensive instances, open security groups), `gcloud`/`gsutil`, `az`,
+`heroku`/`flyctl`/`vercel`/`doctl`/`firebase`..., `gh`, `kubectl`/`oc`/`helm`, `terraform`/`tofu`/`pulumi`/`cdk`/`serverless`,
+SQL in `psql`/`mysql`/`sqlite3` (inline, `-f file`, here-docs, pipes; comments and string literals don't fool it),
+Redis, Mongo, migration tools (`rails`, `prisma`, `django`, `alembic`, ...), `docker`/`compose`, and publishing (`npm publish`,
+`twine upload`, `cargo publish`, `docker push`). Dry runs (`--dry-run`, `--dryrun`) are recognised and left alone.
+
+## Tuning it
+
+`~/.config/seatbelt/config.toml` (see [examples/config.toml](examples/config.toml)):
+
+```toml
+trusted_hosts = ["api.github.com", "*.mycompany.com"]   # secret variables may go to these without asking
+prod_patterns = ["live"]                                # extra words that mean production
+
+[[allow]]
+command = "git push origin feature/*"
+
+[[deny]]
+command = "kubectl * --context=prod*"
+reason = "no agent touches the prod cluster"
+```
+
+- `allow` only lowers an ASK. It can never lower a DENY, or an ask about tampering with the guardrails, and it is matched
+  literally (otherwise an allow for `git push origin feature/*` would also wave through `git push -f origin feature/x`).
+- `deny`/`ask` also match with the flags removed, so `npm run --silent deploy` is caught by `npm run deploy*`. A flag that
+  takes a value leaves the value behind: write `npm * run deploy*` to cover `npm --prefix app run deploy`.
+- **A project can restrict but never permit.** A `seatbelt.toml` in the repository may add `deny`, `ask` and `prod_patterns`;
+  its `allow` and `trusted_hosts` are ignored (and reported). Otherwise a cloned repo could grant its own agent permissions.
+- A broken config file is an `ASK`, never silently ignored. `seatbelt check --config FILE` tries a config; `--no-config` ignores all.
+
 ## What it cannot do (read this)
 
 seatbelt is a **guardrail, not a sandbox**. It reads commands and scripts before they run and refuses the ones it
@@ -107,7 +152,7 @@ it catches the mistakes and the prompt-injected commands *before* they get that 
 - [x] Command analysis engine and `seatbelt check`
 - [x] Claude Code hook (`PreToolUse`), audit log and installer
 - [x] Secrets and exfiltration: credential files, `curl | sh`, `env | curl`, encoded payloads, inline interpreters, scripts the agent wrote
-- [ ] Cloud and infra: `aws`, `gcloud`, `az`, `kubectl`, `helm`, `terraform`, SQL, `docker`, production detection
+- [x] Cloud and infra: `aws`, `gcloud`, `az`, `kubectl`, `helm`, `terraform`, SQL, `docker`, production detection, policy file
 - [ ] Blast-radius preview: "this deletes 14,203 files (3.2 GB), including `.git`"
 - [ ] Learn mode: turn what you approved into an allowlist
 

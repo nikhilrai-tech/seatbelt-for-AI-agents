@@ -83,7 +83,7 @@ def network_sink(cmd: Command, ctx: Context, res: Resolver) -> list[Finding]:
                 why = secret_source_reason(inner, ctx, res)
                 if why:
                     out.append(F("exfil.secret-substitution", DENY, "exfiltration", f"puts {why} into a request to {host}", cmd))
-    if cmd.words and any(secret_vars(w.text) for w in cmd.words[1:]):
+    if cmd.words and any(secret_vars(w.text) for w in cmd.words[1:]) and not ctx.policy.trusts(host):
         v = next(v for w in cmd.words[1:] for v in secret_vars(w.text))
         out.append(F("exfil.secret-variable", ASK, "secret", f"sends the secret variable ${v} to {host}", cmd))
     return out

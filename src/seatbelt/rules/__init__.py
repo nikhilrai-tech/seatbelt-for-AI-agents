@@ -25,6 +25,6 @@ def rules_for(name: str) -> list[Rule]:
     return REGISTRY.get(name, []) + REGISTRY.get("*", [])  # "*" rules look at every command
 
 
-from . import fs, git, interp, network, secrets, system, tamper  # noqa: E402
+from . import cloud, container, db, fs, git, iac, interp, k8s, network, secrets, system, tamper  # noqa: E402
 
-RULE_MODULES = (fs, git, system, secrets, network, interp, tamper)  # importing them registers their rules
+RULE_MODULES = (fs, git, system, secrets, network, interp, tamper, cloud, k8s, iac, db, container)  # importing them registers their rules

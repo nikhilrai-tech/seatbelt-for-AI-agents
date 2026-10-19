@@ -6,6 +6,8 @@ from collections import defaultdict
 from ..context import Context, Resolver
 from ..model import Finding, Level
 from ..shell import SHELLS, Command, parse
+from .common import prod_signal
+from .db import SQL_CLIENTS, scan_sql
 from .interp import INTERPRETERS, _lang, _script_arg, inline_code, scan_code
 from .network import FETCHERS, destination, is_network_sink, sends_data
 from .secrets import secret_source_reason
@@ -57,6 +59,14 @@ def analyze_pipelines(commands: list[Command], ctx: Context, res: Resolver) -> l
                     if why:
                         out.append(F("exfil.pipe", DENY, "exfiltration", f"pipes {why} into `{c.name}` ({destination(c)})", c))
                         break
+            if c.pipe_in and c.name in SQL_CLIENTS:  # echo "DROP TABLE users" | psql
+                for p in linked[:i]:
+                    if p.name in ("echo", "printf"):
+                        out += scan_sql(" ".join(a for a in p.argv[1:] if not a.startswith("-")), prod_signal(c, ctx), c, "piped SQL")
+                    elif p.name == "cat":
+                        for r in p.redirects:
+                            if r.op in ("<<", "<<-", "<<<") and (r.body or r.target):
+                                out += scan_sql(r.body or r.target, prod_signal(c, ctx), c, "piped SQL")
             if _runs_stdin(c):
                 before = linked[:i]
                 if any(p.name in FETCHERS for p in before):

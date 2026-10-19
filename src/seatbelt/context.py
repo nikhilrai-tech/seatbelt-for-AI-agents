@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Mapping, Optional
 
+from .policy import Policy
 from .shell import Word
 
 PROD_RE = re.compile(r"(?<![a-z0-9])(prod|production|prd)(?![a-z])", re.I)
@@ -32,15 +33,22 @@ class Context:
     environ: Mapping[str, str] = field(default_factory=lambda: dict(os.environ))
     headless: bool = False  # nobody can answer a prompt, so every ASK becomes a DENY
     depth: int = 0  # how many scripts deep we are (a script that runs a script that runs ...)
+    policy: Policy = field(default_factory=Policy)
+
+    def _prod_re(self):
+        extra = [re.escape(p) for p in self.policy.prod_patterns]
+        return re.compile(PROD_RE.pattern + ("|" + "|".join(rf"(?<![a-z0-9]){e}(?![a-z])" for e in extra) if extra else ""), re.I)
 
     def is_prod(self, *texts: str) -> bool:
         """True if the command or the environment it runs in looks like production."""
+        rx = self._prod_re()
         for t in texts:
-            if t and PROD_RE.search(t):
+            if t and rx.search(t):
                 return True
         for key in ("AWS_PROFILE", "AWS_DEFAULT_PROFILE", "TF_WORKSPACE", "KUBE_CONTEXT", "CLOUDSDK_ACTIVE_CONFIG_NAME",
-                    "APP_ENV", "ENVIRONMENT", "NODE_ENV", "RAILS_ENV", "DJANGO_ENV"):
-            if PROD_RE.search(self.environ.get(key, "")):
+                    "APP_ENV", "ENVIRONMENT", "NODE_ENV", "RAILS_ENV", "DJANGO_ENV", "DATABASE_URL", "PGHOST", "PGDATABASE",
+                    "MYSQL_HOST", "REDIS_URL", "MONGO_URL", "MONGODB_URI"):
+            if rx.search(self.environ.get(key, "")):
                 return True
         return False
 
