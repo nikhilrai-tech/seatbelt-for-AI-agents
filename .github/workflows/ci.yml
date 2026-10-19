@@ -1,5 +1,7 @@
 name: tests
 on: [push, pull_request]
+permissions:
+  contents: read  # least privilege: tests never need to write to the repository
 jobs:
   test:
     runs-on: ubuntu-latest

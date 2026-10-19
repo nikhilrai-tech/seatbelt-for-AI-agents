@@ -1,0 +1,15 @@
+name: Feature or new rule
+description: A tool seatbelt does not know, or an agent it should support
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What would you like, and what goes wrong without it?
+      description: A concrete example command (or agent) is the most useful part.
+    validations: {required: true}
+  - type: textarea
+    id: safe
+    attributes:
+      label: Which everyday commands must stay quiet?
+      description: A rule that interrupts normal work gets switched off, so this matters as much as the dangerous case.
