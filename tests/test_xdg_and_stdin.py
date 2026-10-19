@@ -35,20 +35,15 @@ def test_the_config_is_really_read_from_xdg(tmp_path):
     assert [r.reason for r in p.deny] == ["from xdg"] and p.error is None
 
 
-def test_an_agent_cannot_edit_the_config_in_the_xdg_location(tmp_path):
+def test_an_agent_cannot_edit_the_config_in_the_xdg_location(monkeypatch):
     """The tamper protection has to move with the config, or the guardrail could be edited by the agent."""
     ctx = Context(cwd="/work/project", home=HOME, environ={"XDG_CONFIG_HOME": "/xdg"})
     assert analyze("echo '[[allow]]' >> /xdg/seatbelt/config.toml", ctx).level == Level.DENY
     assert analyze("rm /xdg/seatbelt/config.toml", ctx).level == Level.DENY
+    monkeypatch.setenv("XDG_CONFIG_HOME", "/xdg")
     payload = {"hook_event_name": "PreToolUse", "tool_name": "Write", "cwd": "/work/project",
                "tool_input": {"file_path": "/xdg/seatbelt/config.toml", "content": "x"}}
-    import os
-    old = os.environ.get("XDG_CONFIG_HOME")
-    os.environ["XDG_CONFIG_HOME"] = "/xdg"
-    try:
-        assert hook.handle(payload)["hookSpecificOutput"]["permissionDecision"] == "deny"
-    finally:
-        os.environ.pop("XDG_CONFIG_HOME") if old is None else os.environ.update(XDG_CONFIG_HOME=old)
+    assert hook.handle(payload)["hookSpecificOutput"]["permissionDecision"] == "deny"
     # the default location stays protected too, and unrelated files under XDG are not
     assert analyze("rm ~/.config/seatbelt/config.toml", Context(cwd="/work/project", home=HOME, environ={})).level == Level.DENY
     assert analyze("touch /xdg/other/file.txt", ctx).level == Level.ALLOW
