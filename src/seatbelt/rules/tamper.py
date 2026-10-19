@@ -8,6 +8,7 @@ from typing import Optional
 from ..context import Context, Resolver
 from ..model import Finding, Level
 from ..shell import Command, Word
+from ..policy import config_dir
 from . import rule
 from .opts import parse_words
 
@@ -35,7 +36,8 @@ def protected_kind(path: str, ctx: Context) -> Optional[tuple[Level, str]]:
     rel = path[len(home) + 1:] if path.startswith(home + "/") else None
     if fnmatch.fnmatchcase(path, "*/.claude/settings*.json") or "/.claude/hooks/" in path or base == ".claude.json":
         return DENY, "the agent's own settings or hooks"
-    if base in ("seatbelt.toml", ".seatbelt.toml") or (rel and rel.startswith(".config/seatbelt/")):
+    if base in ("seatbelt.toml", ".seatbelt.toml") or (rel and rel.startswith(".config/seatbelt/")) \
+            or path.startswith(config_dir(ctx.home, ctx.environ).as_posix() + "/") or path == ctx.environ.get("SEATBELT_CONFIG"):
         return DENY, "seatbelt's own configuration"
     if path in audit_paths(ctx) or path.rstrip("/").endswith(".jsonl.1") and "/seatbelt/" in path:
         return DENY, "seatbelt's audit log"

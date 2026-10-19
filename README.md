@@ -71,6 +71,12 @@ start is 11 ms). Invisible next to a model call.
 
 **Will it nag me?** It is quiet by default: more than 150 everyday commands (`npm test`, `kubectl get`, `terraform plan`,
 `rm -rf node_modules`...) must stay silent in the tests, and `seatbelt learn` suggests allow rules from what you approve.
+You can see for yourself in ten seconds by pointing it at your own shell history (nothing is executed, previews are off, and
+the output is redacted so it is safe to paste into an issue):
+
+```bash
+seatbelt check --stdin --quiet < ~/.bash_history          # zsh history works too: < ~/.zsh_history
+```
 
 **What if it breaks?** It fails closed (an internal error becomes an `ask`), the installer adds `onFailure: block` where Claude
 Code supports it, and `seatbelt doctor` verifies the hook is installed and live.
@@ -209,7 +215,7 @@ Redis, Mongo, migration tools (`rails`, `prisma`, `django`, `alembic`, ...), `do
 
 ## Tuning it
 
-`~/.config/seatbelt/config.toml` (see [examples/config.toml](examples/config.toml)):
+`~/.config/seatbelt/config.toml`, or `$XDG_CONFIG_HOME/seatbelt/config.toml` if you set it (see [examples/config.toml](examples/config.toml)):
 
 ```toml
 trusted_hosts = ["api.github.com", "*.mycompany.com"]   # secret variables may go to these without asking

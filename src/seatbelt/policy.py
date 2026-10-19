@@ -105,9 +105,16 @@ def _read(path: Path, policy: Policy, trusted: bool) -> None:
         policy.error = f"{path} could not be read ({type(exc).__name__}: {exc})"
 
 
+def config_dir(home: str, environ: Mapping[str, str]) -> Path:
+    """`$XDG_CONFIG_HOME/seatbelt` when set to an absolute path (as the XDG spec says), else `~/.config/seatbelt`."""
+    xdg = environ.get("XDG_CONFIG_HOME", "")
+    base = Path(xdg) if xdg.startswith("/") else Path(home) / ".config"
+    return base / "seatbelt"
+
+
 def user_config_path(home: str, environ: Mapping[str, str]) -> Path:
     override = environ.get("SEATBELT_CONFIG")
-    return Path(override) if override else Path(home) / ".config" / "seatbelt" / "config.toml"
+    return Path(override) if override else config_dir(home, environ) / "config.toml"
 
 
 def find_project_file(cwd: str, home: str) -> Optional[Path]:

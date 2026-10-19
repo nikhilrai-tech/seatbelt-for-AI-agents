@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.1
+
+- **`seatbelt check --stdin [--quiet]`**: check every command on stdin, one per line (bash and zsh history files work) and get a
+  summary. The fastest way to find false positives. Output is redacted, nothing is executed, previews are off.
+- **`XDG_CONFIG_HOME`** is honoured for the user config; the tamper protection moves with it, so the agent cannot edit the config
+  in the new location either. `seatbelt doctor` shows where the config would be.
+
 ## 0.1.0
 
 First release. Zero dependencies, Python 3.11+. Licensed under **Apache-2.0** (the first commits of the repository were MIT; copies
