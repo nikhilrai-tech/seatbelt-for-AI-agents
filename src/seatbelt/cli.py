@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
-from . import __version__, hook, install, learn
+from . import __version__, demo, doctor, hook, install, learn
 from .audit import AuditLog
 from . import policy as policy_mod
 from .context import Context
@@ -78,6 +79,14 @@ def build_parser() -> argparse.ArgumentParser:
             i.add_argument("--headless", action="store_true", help="install with --headless (ASK becomes DENY)")
             i.add_argument("--no-on-failure-block", action="store_true", help="don't add onFailure=block")
 
+    dr = sub.add_parser("doctor", help="check that the guardrail is in place and really works (runs the installed hook as a test)")
+    dr.add_argument("--json", action="store_true")
+    dr.add_argument("--cwd", help="check as if run from this project directory")
+
+    dm = sub.add_parser("demo", help="a guided tour of what seatbelt does with risky commands (nothing is executed)")
+    dm.add_argument("--no-color", action="store_true")
+    dm.add_argument("--short", action="store_true", help="three examples per scenario")
+
     ln = sub.add_parser("learn", help="suggest allow rules from the prompts you approved (suggestions only, nothing is applied)")
     ln.add_argument("--min", type=int, default=3, help="approvals needed before a pattern is suggested (default 3)")
     ln.add_argument("--audit-log")
@@ -137,6 +146,24 @@ def _cmd_install(args) -> int:
     return 0
 
 
+def _cmd_doctor(args) -> int:
+    cwd = args.cwd or os.getcwd()
+    checks = doctor.run(cwd, os.path.expanduser("~"), dict(os.environ))
+    if args.json:
+        print(json.dumps([vars(c) for c in checks], indent=2))
+    else:
+        print(doctor.format_checks(checks, color=sys.stdout.isatty()))
+    return 1 if any(c.status == doctor.FAIL for c in checks) else 0
+
+
+def _cmd_demo(args) -> int:
+    text, wrong = demo.run_demo(color=sys.stdout.isatty() and not args.no_color, short=args.short)
+    print(text)
+    if wrong:
+        print("\nthese scenarios no longer behave as documented: " + "; ".join(wrong), file=sys.stderr)
+    return 1 if wrong else 0
+
+
 def _cmd_learn(args) -> int:
     log = AuditLog(args.audit_log) if args.audit_log else AuditLog()
     rows = list(log.read())
@@ -178,6 +205,10 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_log(args)
     if args.command == "learn":
         return _cmd_learn(args)
+    if args.command == "doctor":
+        return _cmd_doctor(args)
+    if args.command == "demo":
+        return _cmd_demo(args)
     if args.command == "check":
         kw = {}
         if args.cwd:
