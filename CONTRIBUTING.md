@@ -37,6 +37,10 @@ A rule that interrupts everyday work gets switched off, so **every change is jud
   and readers see nothing real. No real hostnames, account ids or people's names.
 - `allow` can only lower an `ask`; keep it that way.
 
+## License
+
+By contributing you agree that your contribution is licensed under the Apache License 2.0 (section 5 of the license).
+
 ## Reporting a wrong verdict
 
 Run `seatbelt check --json '<command>'` and paste the output into the matching issue template. Remove anything private
