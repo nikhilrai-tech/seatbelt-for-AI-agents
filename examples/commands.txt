@@ -306,6 +306,8 @@ DENY	/home/dev/.local/bin/seatbelt uninstall claude-code --write
 DENY	pipx run --spec seatbelt-guard seatbelt uninstall claude-code --write
 DENY	seatbelt install claude-code --write
 DENY	seatbelt install claude-code --scope project --write --headless
+DENY	seatbelt install claude-code --wr
+DENY	seatbelt install claude-code --no-on-failure-block --wri
 DENY	pip uninstall -y seatbelt-guard
 DENY	pipx uninstall seatbelt-guard
 DENY	python3 -m pip uninstall seatbelt-guard

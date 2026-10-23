@@ -28,6 +28,11 @@ def _seatbelt_args(cmd: Command) -> list[str] | None:
     return None
 
 
+def _is_write(arg: str) -> bool:
+    """`--write`, or any prefix argparse would accept for it (`--wr`): older installs still abbreviate long options."""
+    return arg.startswith("--w") and "--write".startswith(arg)
+
+
 def _finding(cmd: Command, what: str) -> Finding:
     return Finding("tamper.self-protection", Level.DENY, "tamper", MESSAGE.format(what=what), cmd.raw)
 
@@ -42,7 +47,7 @@ def self_protection(cmd: Command, ctx: Context, res: Resolver) -> list[Finding]:
         sub = positional[0] if positional else ""
         if sub == "uninstall":
             return [_finding(cmd, "`seatbelt uninstall` removes the hook")]
-        if sub == "install" and "--write" in args:
+        if sub == "install" and any(_is_write(a) for a in args):
             return [_finding(cmd, "`seatbelt install --write` rewrites the agent's settings")]
     argv = cmd.argv
     if cmd.name in ("pip", "pip3", "pipx", "uv", "uvx", "conda", "mamba") and any(a in ("uninstall", "remove") for a in argv) \

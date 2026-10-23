@@ -91,6 +91,21 @@ def test_an_agent_cannot_switch_seatbelt_off_by_running_seatbelt():
         assert v.level == Level.DENY and ("own guardrail" in v.reason or "own installation" in v.reason), cmd
 
 
+def test_abbreviated_write_flag_does_not_slip_past_self_protection():
+    """Found in review: argparse accepted `--wr` for `--write`, so the exact-match check let `install --wr` through."""
+    for cmd in ("seatbelt install claude-code --wr", "seatbelt install claude-code --w", "seatbelt install claude-code --wri",
+                "seatbelt install claude-code --no-on-failure-block --wri", "python -m seatbelt install claude-code --writ"):
+        v = analyze(cmd, Context(cwd="/work/project", home="/home/dev", environ={}))
+        assert v.level == Level.DENY, cmd
+
+
+def test_the_cli_rejects_abbreviated_options():
+    import pytest
+    from seatbelt.cli_full import build_parser
+    with pytest.raises(SystemExit):
+        build_parser().parse_args(["install", "claude-code", "--wr"])
+
+
 def test_the_rest_of_the_seatbelt_cli_is_not_blocked():
     for cmd in ("seatbelt install claude-code", "seatbelt install claude-code --scope project", "seatbelt demo", "seatbelt doctor",
                 "seatbelt check 'rm -rf /'", "seatbelt log --tail 5", "seatbelt learn", "seatbelt --version", "pip install -U seatbelt-guard",

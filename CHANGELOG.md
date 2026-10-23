@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **Security fix: abbreviated options slipped past the self-protection rule.** argparse accepts any unambiguous prefix of a long option,
+  so `seatbelt install claude-code --wr` behaved like `--write` but was not matched. Seatbelt's own commands now reject abbreviations
+  (`allow_abbrev=False`), and the self-protection rule also treats any prefix of `--write` as `--write`. Reported in a review of a
+  HOL Guard command source for seatbelt.
+
 ## 0.1.5
 
 - The PyPI page now shows the demo GIF and its links work (the README used relative paths, which do not resolve on pypi.org). No code changes.

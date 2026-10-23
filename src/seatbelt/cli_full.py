@@ -83,11 +83,11 @@ def _check_stdin(ctx, color: bool, quiet: bool) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="seatbelt", description="A seatbelt for AI coding agents.")
+    p = argparse.ArgumentParser(prog="seatbelt", description="A seatbelt for AI coding agents.", allow_abbrev=False)
     p.add_argument("--version", action="version", version=f"seatbelt {__version__}")
     sub = p.add_subparsers(dest="command", required=True)
 
-    c = sub.add_parser("check", help="explain what seatbelt would do with a command (nothing is executed)")
+    c = sub.add_parser("check", help="explain what seatbelt would do with a command (nothing is executed)", allow_abbrev=False)
     c.add_argument("cmd", nargs=argparse.REMAINDER, help="the command line to check (quote it, or put options before it)")
     c.add_argument("--file", help="check every line of a file (plain commands, or EXPECTED<TAB>command for the regression corpus)")
     c.add_argument("--stdin", action="store_true",
@@ -101,12 +101,12 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--json", action="store_true")
     c.add_argument("--no-color", action="store_true")
 
-    h = sub.add_parser("hook", help="Claude Code PreToolUse hook: reads the hook JSON on stdin, answers on stdout")
+    h = sub.add_parser("hook", help="Claude Code PreToolUse hook: reads the hook JSON on stdin, answers on stdout", allow_abbrev=False)
     h.add_argument("--headless", action="store_true", help="nobody can answer prompts: ASK becomes DENY")
     h.add_argument("--audit-log", help="audit log path (default: ~/.local/state/seatbelt/audit.jsonl)")
 
     for name, text in (("install", "add the hook to a Claude Code settings.json"), ("uninstall", "remove the hook again")):
-        i = sub.add_parser(name, help=text)
+        i = sub.add_parser(name, help=text, allow_abbrev=False)
         i.add_argument("target", choices=["claude-code"])
         i.add_argument("--scope", choices=["user", "project", "local"], default="user",
                        help="user: ~/.claude/settings.json, project: ./.claude/settings.json, local: ./.claude/settings.local.json")
@@ -116,20 +116,20 @@ def build_parser() -> argparse.ArgumentParser:
             i.add_argument("--headless", action="store_true", help="install with --headless (ASK becomes DENY)")
             i.add_argument("--no-on-failure-block", action="store_true", help="don't add onFailure=block")
 
-    dr = sub.add_parser("doctor", help="check that the guardrail is in place and really works (runs the installed hook as a test)")
+    dr = sub.add_parser("doctor", help="check that the guardrail is in place and really works (runs the installed hook as a test)", allow_abbrev=False)
     dr.add_argument("--json", action="store_true")
     dr.add_argument("--cwd", help="check as if run from this project directory")
 
-    dm = sub.add_parser("demo", help="a guided tour of what seatbelt does with risky commands (nothing is executed)")
+    dm = sub.add_parser("demo", help="a guided tour of what seatbelt does with risky commands (nothing is executed)", allow_abbrev=False)
     dm.add_argument("--no-color", action="store_true")
     dm.add_argument("--short", action="store_true", help="three examples per scenario")
 
-    ln = sub.add_parser("learn", help="suggest allow rules from the prompts you approved (suggestions only, nothing is applied)")
+    ln = sub.add_parser("learn", help="suggest allow rules from the prompts you approved (suggestions only, nothing is applied)", allow_abbrev=False)
     ln.add_argument("--min", type=int, default=3, help="approvals needed before a pattern is suggested (default 3)")
     ln.add_argument("--audit-log")
     ln.add_argument("--json", action="store_true")
 
-    g = sub.add_parser("log", help="show what the agent ran")
+    g = sub.add_parser("log", help="show what the agent ran", allow_abbrev=False)
     g.add_argument("--tail", type=int, default=20)
     g.add_argument("--decision", choices=["allow", "ask", "deny"])
     g.add_argument("--audit-log")
